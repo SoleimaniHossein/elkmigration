@@ -1,6 +1,7 @@
 package pipeline
 
 func TransformDocuments(docs <-chan map[string]interface{}, transformedDocs chan<- map[string]interface{}) {
+	defer close(transformedDocs)
 	for doc := range docs {
 		// Example transformation: renaming fields
 		//if val, ok := doc["old_field"]; ok {
@@ -24,6 +25,6 @@ func TransformDocuments(docs <-chan map[string]interface{}, transformedDocs chan
 		// Send transformed document to next stage
 		transformedDocs <- doc
 		//logger.Info("Transformed document", zap.Any("client_ip", doc["client_ip"]))
+
 	}
-	close(transformedDocs)
 }

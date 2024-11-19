@@ -47,7 +47,7 @@ func (e *ES8Client) Ping() error {
 	return nil
 }
 
-func NewElasticsearchClient(version int, url string) (ElasticsearchClient, error) {
+func NewElasticsearchClient(version int, url, username, password string) (ElasticsearchClient, error) {
 	switch version {
 	case 2:
 		client, err := elastic.NewClient(elastic.SetURL(url), elastic.SetSniff(false))
@@ -66,6 +66,8 @@ func NewElasticsearchClient(version int, url string) (ElasticsearchClient, error
 	case 8:
 		client, err := es8.NewClient(es8.Config{
 			Addresses: []string{url},
+			Username:  username,
+			Password:  password,
 		})
 		if err != nil {
 			return nil, err

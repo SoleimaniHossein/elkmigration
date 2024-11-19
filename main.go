@@ -5,6 +5,7 @@ import (
 	"elkmigration/config"
 	"elkmigration/logger"
 	"elkmigration/pipeline"
+	"runtime"
 	"sync"
 	"time"
 
@@ -15,9 +16,9 @@ import (
 // Configuration for worker counts and buffer sizes
 const (
 	exportWorkers    = 20
-	transformWorkers = 20
-	importWorkers    = 20
-	bufferSize       = 1000
+	transformWorkers = 10
+	importWorkers    = 10
+	bufferSize       = 1000000
 )
 
 func main() {
@@ -40,16 +41,26 @@ func main() {
 	clients.InitRedis(logger.Log, c)
 	defer clients.CloseRedis()
 
+	// Get the number of available CPU cores
+	numCPU := runtime.NumCPU()
+	logger.Info("Available CPUs: %d\n", zap.Any("", numCPU))
+
+	// Set the maximum number of CPUs to use
+	runtime.GOMAXPROCS(numCPU) // Or set to a specific number like 4, depending on the need
+
+	// Verify the number of CPUs Go is using
+	logger.Info("Go is using %d CPUs\n", zap.Any("", runtime.GOMAXPROCS(0)))
+
 	logger.ZInfo("Starting Elasticsearch migration")
 
 	// Initialize Elasticsearch clients
-	es2Client, err := clients.NewElasticsearchClient(2, c.Elk2URL)
+	es2Client, err := clients.NewElasticsearchClient(2, c.Elk2URL, "", "")
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 2.x client", zap.Error(err))
 		return
 	}
 
-	es8Client, err := clients.NewElasticsearchClient(8, c.Elk8URL)
+	es8Client, err := clients.NewElasticsearchClient(8, c.Elk8URL, c.ELK8USER, c.Elk8PASS)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 8.x client", zap.Error(err))
 		return
@@ -74,7 +85,7 @@ func main() {
 
 	// Transform stage worker pool
 	for i := 0; i < transformWorkers; i++ {
-		wg.Add(1)
+		wg.Add(2)
 		go func(workerID int) {
 			defer wg.Done()
 			logger.Info("Starting transform worker", zap.Int("workerID", workerID))
@@ -85,11 +96,11 @@ func main() {
 
 	// Import stage worker pool
 	for i := 0; i < importWorkers; i++ {
-		wg.Add(1)
+		wg.Add(3)
 		go func(workerID int) {
 			defer wg.Done()
 			logger.Info("Starting import worker", zap.Int("workerID", workerID))
-			pipeline.ImportDocuments(es8Client, "new-8-oxygen", transformedDocs)
+			pipeline.ImportDocuments(es8Client, "ix_oxygen", transformedDocs)
 			logger.Info("Import worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
@@ -97,8 +108,8 @@ func main() {
 	// Close channels after all work is done
 	//go func() {
 	wg.Wait()
-	close(docs)            // Close docs to stop transformers
-	close(transformedDocs) // Close transformedDocs to stop importers
+	//close(docs)            // Close docs to stop transformers
+	//close(transformedDocs) // Close transformedDocs to stop importers
 	//}()
 
 	logger.ZInfo("Elasticsearch migration completed")

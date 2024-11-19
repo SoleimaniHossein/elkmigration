@@ -5,17 +5,22 @@ import (
 	"elkmigration/clients"
 	"elkmigration/logger"
 	"encoding/json"
+	"errors"
 	"log"
 	"time"
 
-	//"github.com/elastic/go-elasticsearch/v7"
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"go.uber.org/zap"
 )
 
+const (
+	retryDelay          = 2 * time.Second  // Delay between retries on failure
+	maxBulkPayloadBytes = 10 * 1024 * 1024 // Set a 10MB limit per bulk request
+)
+
+// ImportDocuments imports documents into Elasticsearch.
 func ImportDocuments(client clients.ElasticsearchClient, index string, transformedDocs <-chan map[string]interface{}) {
-	//es7Client, ok7 := client.(*clients.ES7Client) // Type assertion
-	esClient, ok := client.(*clients.ES8Client) // Type assertion
+	esClient, ok := client.(*clients.ES8Client) // Type assertion for ES8Client
 	if !ok {
 		logger.Error("Invalid client type; expected *ES8Client")
 		return
@@ -26,29 +31,29 @@ func ImportDocuments(client clients.ElasticsearchClient, index string, transform
 	for doc := range transformedDocs {
 		bulkData = append(bulkData, doc)
 
-		// Send batch when reaching the bulkSize
+		// Send bulk request when reaching the bulkSize
 		if len(bulkData) >= bulkSize {
 			if err := sendBulkRequest(esClient.Client, index, bulkData); err != nil {
-				log.Printf("Error during bulk insert: %v", err)
-				time.Sleep(1 * time.Second) // Wait before retrying
+				logger.Warn("Error during bulk insert, retrying...", zap.Error(err))
+				time.Sleep(retryDelay)
 			}
-			bulkData = bulkData[:0] // Clear the slice for the next batch
+			bulkData = bulkData[:0] // Reset the bulk data buffer
 		}
 	}
 
 	// Send any remaining documents
 	if len(bulkData) > 0 {
 		if err := sendBulkRequest(esClient.Client, index, bulkData); err != nil {
-			log.Printf("Error during final bulk insert: %v", err)
+			logger.Error("Error during final bulk insert", zap.Error(err))
 		}
 	}
 }
 
-// sendBulkRequest: Sends a batch of documents to Elasticsearch
 func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]interface{}) error {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	// Prepare bulk request format for Elasticsearch
+
+	// Prepare bulk request format
 	for _, doc := range bulkData {
 		meta := map[string]interface{}{
 			"index": map[string]interface{}{
@@ -61,22 +66,39 @@ func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]int
 		if err := encoder.Encode(doc); err != nil {
 			return err
 		}
+
+		// Check if the payload size exceeds the limit
+		if buf.Len() >= maxBulkPayloadBytes {
+			if err := executeBulkRequest(client, buf.Bytes()); err != nil {
+				return err
+			}
+			buf.Reset() // Reset buffer for the next batch
+		}
 	}
 
-	// Perform bulk request
-	res, err := client.Bulk(bytes.NewReader(buf.Bytes()))
+	// Send remaining documents
+	if buf.Len() > 0 {
+		if err := executeBulkRequest(client, buf.Bytes()); err != nil {
+			log.Fatalf("executeBulkRequest err: %s", err)
+		}
+	}
+
+	logger.Info("Bulk request completed", zap.Int("documents_count", len(bulkData)))
+	return nil
+}
+
+func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
+	res, err := client.Bulk(bytes.NewReader(bulkPayload))
 	if err != nil {
 		logger.Error("Failed to execute bulk request", zap.Error(err))
 		return err
 	}
 	defer res.Body.Close()
 
-	// Check for bulk request errors
+	// Check for errors in the response
 	if res.IsError() {
-		logger.Error("Bulk request failed", zap.String("status", res.Status()))
-		return err
+		logger.Error("Bulk request failed when importing", zap.String("status", res.Status()))
+		return errors.New("bulk request failed")
 	}
-
-	logger.Info("Successfully imported bulk documents", zap.Int("documents_count", len(bulkData)))
 	return nil
 }

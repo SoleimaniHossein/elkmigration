@@ -12,6 +12,8 @@ type Config struct {
 	Elk2URL   string `mapstructure:"ELK2_URL"`
 	Elk7URL   string `mapstructure:"ELK7_URL"`
 	Elk8URL   string `mapstructure:"ELK8_URL"`
+	ELK8USER  string `mapstructure:"ELK8_USER"`
+	Elk8PASS  string `mapstructure:"ELK8_PASS"`
 	RedisURL  string `mapstructure:"REDIS_URL"`
 	RedisDb   int    `mapstructure:"REDIS_DB"`
 	RedisPass string `mapstructure:"REDIS_PASSWORD"`
@@ -33,6 +35,8 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("ELK2_URL", "http://127.0.0.1:9200")
 	viper.SetDefault("ELK7_URL", "http://127.0.0.1:9200")
 	viper.SetDefault("ELK8_URL", "http://127.0.0.1:9200")
+	viper.SetDefault("ELK8_USER", "user")
+	viper.SetDefault("ELK8_PASS", "pass")
 	viper.SetDefault("REDIS_URL", "127.0.0.1:6379")
 	viper.SetDefault("REDIS_DB", 0)
 	viper.SetDefault("REDIS_PASSWORD", nil)
@@ -53,6 +57,8 @@ func LoadConfig() (*Config, error) {
 		zap.String("ELK2 URL", config.Elk2URL),
 		zap.String("ELK7 URL", config.Elk7URL),
 		zap.String("ELK8 URL", config.Elk8URL),
+		zap.String("ELK8 USER", config.ELK8USER),
+		zap.String("ELK8 PASS", config.Elk8PASS),
 		zap.String("Redis URL", config.RedisURL),
 		zap.Int("Redis DB", config.RedisDb),
 		zap.String("Redis Pass", config.RedisPass),
