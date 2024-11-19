@@ -11,16 +11,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    environment:
-      - REDIS_URL=redis:6379
-      - REDIS_PASSWORD=
-      - REDIS_DB=0
-      - ELK2_URL=http://172.29.234.37:9201
-      - ELK7_URL=http://127.0.0.1:9200
-      - ELK8_URL=http://127.0.0.1:9200
     depends_on:
       - redis
       - elk2
+      - elk8
     networks:
       - elk-net
 
@@ -37,7 +31,7 @@ services:
     container_name: elk2
     ports:
       - "5602:5601"
-      - "9201:9200"
+      - "9202:9200"
       - "9301:9300"
       - "5045:5044"
       - "5001:5000"
@@ -54,12 +48,12 @@ services:
 
 
   elk8:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    image: elasticsearch:8.15.3
     environment:
       - discovery.type=single-node
       - transport.host=127.0.0.1
       - network.host=0.0.0.0
     ports:
-      - "9200:9200"
+      - "9208:9200"
     networks:
       - elk-net
