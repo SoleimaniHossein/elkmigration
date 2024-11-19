@@ -15,6 +15,26 @@ services:
       - redis
       - elk2
       - elk8
+    environment:
+      - ELK_INDEX=${ELK_INDEX:-idx_elastic}
+
+      - ELK2_URL=${ELK2_URL:-127.0.0.1:9202}
+      - ELK2_USERNAME=${ELK2_USERNAME:-elastic}
+      - ELK2_PASSWORD=${ELK2_PASSWORD:-changeme}
+
+      - ELK7_URL=${ELK7_URL:-http://127.0.0.1:9207}
+      - ELK7_USERNAME=${ELK7_USERNAME:-elastic}
+      - ELK7_PASSWORD=${ELK7_PASSWORD:-changeme}
+
+      - ELK8_URL=${ELK8_URL:-http://127.0.0.1:9208}
+      - ELK8_USERNAME=${ELK8_USERNAME:-elastic}
+      - ELK8_PASSWORD=${ELK8_PASSWORD:-changeme}
+
+      - REDIS_URL=${REDIS_URL:-127.0.0.1:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+
+
     networks:
       - elk-net
 
