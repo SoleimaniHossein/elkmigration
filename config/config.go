@@ -24,9 +24,16 @@ type Config struct {
 	ELK8User string `mapstructure:"ELK8_USER"`
 	Elk8Pass string `mapstructure:"ELK8_PASS"`
 
-	RedisUrl  string `mapstructure:"REDIS_URL"`
-	RedisDb   int    `mapstructure:"REDIS_DB"`
-	RedisPass string `mapstructure:"REDIS_PASSWORD"`
+	BulkSize      int    `mapstructure:"BULK_SIZE"`
+	MaxRetries    int    `mapstructure:"MAX_RETRIES"`
+	ScrollTimeout string `mapstructure:"SCROLL_TIMEOUT"`
+
+	RedisUrl        string `mapstructure:"REDIS_URL"`
+	RedisDb         int    `mapstructure:"REDIS_DB"`
+	RedisPass       string `mapstructure:"REDIS_PASSWORD"`
+	RedisKeyLastID  string `mapstructure:"REDIS_KEY_LAST_ID"`
+	RedisKeyLastDoc string `mapstructure:"REDIS_KEY_LAST_DOC"`
+	RedisKeyCount   string `mapstructure:"REDIS_KEY_COUNT"`
 }
 
 // LoadConfig initializes the application configuration from environment variables
@@ -43,6 +50,7 @@ func LoadConfig() (*Config, error) {
 	viper.AutomaticEnv()
 	// Provide default values
 	viper.SetDefault("ELK_INDEX_FROM", "idx_from")
+	viper.SetDefault("ELK_INDEX_FROM", "idx_from")
 	viper.SetDefault("ELK_INDEX_TO", "idx_to")
 
 	viper.SetDefault("ELK2_URL", "http://127.0.0.1:9202")
@@ -57,9 +65,16 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("ELK8_USER", "elastic")
 	viper.SetDefault("ELK8_PASS", "changeme")
 
+	viper.SetDefault("BULK_SIZE", "1000")
+	viper.SetDefault("MAX_RETRIES", "60")
+	viper.SetDefault("SCROLL_TIMEOUT", "1m")
+
 	viper.SetDefault("REDIS_URL", "127.0.0.1:6379")
 	viper.SetDefault("REDIS_DB", 0)
 	viper.SetDefault("REDIS_PASSWORD", nil)
+	viper.SetDefault("REDIS_KEY_LAST_ID", "id")
+	viper.SetDefault("REDIS_KEY_LAST_DOC", "doc")
+	viper.SetDefault("REDIS_KEY_COUNT", "count")
 
 	// Define a Config struct to hold the configuration
 	var config Config
@@ -71,14 +86,17 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Log the loaded configuration (optional)
-	logger, _ := zap.NewProduction() // Adjust logging based on your setup
-	defer logger.Sync()
-	logger.Info("Configuration loaded",
+	configLogger, _ := zap.NewProduction() // Adjust logging based on your setup
+	defer configLogger.Sync()
+	configLogger.Info("Configuration loaded",
 		zap.String("ELK2 URL", config.Elk2Url),
 		zap.String("ELK7 URL", config.Elk7Url),
 		zap.String("ELK8 URL", config.Elk8Url),
 		zap.String("ELK INDEX FROM", config.ElkIndexFrom),
 		zap.String("ELK INDEX TO", config.ElkIndexTo),
+		zap.Int("BULK SIZE", config.BulkSize),
+		zap.Int("MAX RETRIES", config.MaxRetries),
+		zap.String("SCROLL TIMEOUT", config.ScrollTimeout),
 		zap.String("Redis URL", config.RedisUrl),
 	)
 

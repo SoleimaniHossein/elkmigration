@@ -3,6 +3,7 @@ package pipeline
 import (
 	"bytes"
 	"elkmigration/clients"
+	"elkmigration/config"
 	"elkmigration/logger"
 	"encoding/json"
 	"errors"
@@ -14,26 +15,26 @@ import (
 )
 
 const (
-	retryDelay          = 2 * time.Second  // Delay between retries on failure
-	maxBulkPayloadBytes = 10 * 1024 * 1024 // Set a 10MB limit per bulk request
+	retryDelay          = 1 * time.Second   // Delay between retries on failure
+	maxBulkPayloadBytes = 100 * 1024 * 1024 // Set a 100MB limit per bulk request
 )
 
 // ImportDocuments imports documents into Elasticsearch.
-func ImportDocuments(client clients.ElasticsearchClient, index string, transformedDocs <-chan map[string]interface{}) {
+func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, transformedDocs <-chan map[string]interface{}) {
 	esClient, ok := client.(*clients.ES8Client) // Type assertion for ES8Client
 	if !ok {
 		logger.Error("Invalid client type; expected *ES8Client")
 		return
 	}
 
-	bulkData := make([]map[string]interface{}, 0, bulkSize)
+	bulkData := make([]map[string]interface{}, 0, config.BulkSize)
 
 	for doc := range transformedDocs {
 		bulkData = append(bulkData, doc)
 
 		// Send bulk request when reaching the bulkSize
-		if len(bulkData) >= bulkSize {
-			if err := sendBulkRequest(esClient.Client, index, bulkData); err != nil {
+		if len(bulkData) >= config.BulkSize {
+			if err := sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData); err != nil {
 				logger.Warn("Error during bulk insert, retrying...", zap.Error(err))
 				time.Sleep(retryDelay)
 			}
@@ -43,7 +44,7 @@ func ImportDocuments(client clients.ElasticsearchClient, index string, transform
 
 	// Send any remaining documents
 	if len(bulkData) > 0 {
-		if err := sendBulkRequest(esClient.Client, index, bulkData); err != nil {
+		if err := sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData); err != nil {
 			logger.Error("Error during final bulk insert", zap.Error(err))
 		}
 	}

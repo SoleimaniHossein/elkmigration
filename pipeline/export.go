@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"elkmigration/clients"
+	"elkmigration/config"
 	"elkmigration/logger"
 	"elkmigration/utils"
 	"encoding/json"
@@ -13,23 +14,19 @@ import (
 )
 
 const (
-	redisKeyLastID        = "elk:id"
-	redisKeyLastDocsCount = "elk:docs_count"
-	bulkSize              = 1000
-	maxRetries            = 60
-	initialDelay          = 1 * time.Second
-	scrollTimeout         = "1m" // Set a scroll timeout to maintain context on the server
-
+	initialDelay = 1 * time.Second
 )
 
 // ExportDocuments exports documents from Elasticsearch 2.x, with state-saving to Redis.
 // Accepts a mutex to prevent race conditions when accessing Redis.
-func ExportDocuments(client clients.ElasticsearchClient, index string, docs chan<- map[string]interface{}, redis *clients.Redis, mu *sync.Mutex) {
+func ExportDocuments(client clients.ElasticsearchClient, config *config.Config, docs chan<- map[string]interface{}, redis *clients.Redis, mu *sync.Mutex) {
 	es2Client := client.(*clients.ES2Client).Client
 
 	// Retrieve last processed document ID from Redis
 	mu.Lock()
-	lastID, err := redis.GetLastProcessedID(redisKeyLastID)
+	lastID, err := redis.GetLastProcessedID(config.RedisKeyLastID)
+	lastDoc, err := redis.GetLastProcessedID(config.RedisKeyLastDoc)
+	lastCount, err := redis.GetLastProcessedID(config.RedisKeyCount)
 	mu.Unlock()
 
 	if err != nil {
@@ -40,7 +37,7 @@ func ExportDocuments(client clients.ElasticsearchClient, index string, docs chan
 	resume := lastID != ""
 
 	// Initialize Elasticsearch scroll with timeout and size
-	scroll := es2Client.Scroll(index).Size(bulkSize).Scroll(scrollTimeout)
+	scroll := es2Client.Scroll(config.ElkIndexFrom).Size(config.BulkSize).Scroll(config.ScrollTimeout)
 
 	for {
 		// Execute scroll with retries and exponential backoff
@@ -51,7 +48,7 @@ func ExportDocuments(client clients.ElasticsearchClient, index string, docs chan
 			if err == nil {
 				break
 			}
-			if retries >= maxRetries {
+			if retries >= config.MaxRetries {
 				logger.Error("Max retries reached during scroll execution", zap.Error(err))
 				return
 			}
@@ -85,20 +82,19 @@ func ExportDocuments(client clients.ElasticsearchClient, index string, docs chan
 
 			// Save the last processed document ID to Redis with a mutex lock
 			mu.Lock()
-			if err := redis.SaveLastProcessedID(redisKeyLastID, hit.Id); err != nil {
+			if err := redis.SaveLastProcessedID(config.RedisKeyLastID, hit.Id); err != nil {
 				logger.Error("Failed to save last processed ID to Redis", zap.Error(err))
 			}
-			lastCount, _ := redis.GetLastProcessedID(redisKeyLastDocsCount)
-			if err := redis.SaveLastProcessedID(redisKeyLastDocsCount, utils.StringToIntOrDefault(lastCount, 0)+1); err != nil {
+			if err := redis.SaveLastProcessedID(config.RedisKeyCount, utils.StringToIntOrDefault(config.RedisKeyCount, 0)+1); err != nil {
 				logger.Error("Failed to save last Docs count to Redis", zap.Error(err))
 			}
 			mu.Unlock()
 
-			logger.Info("Exported document", zap.Int("idx", idx), zap.String("hit ID", hit.Id), zap.String("last Docs Count", lastCount))
+			logger.Info("Exported document", zap.Int("idx", idx), zap.String("hit ID", hit.Id), zap.String("last Docs Count", lastCount), zap.String("last Doc", lastDoc))
 		}
 
 		// Update the scroll with the current scroll ID
-		scroll = es2Client.Scroll(index).Size(bulkSize).ScrollId(result.ScrollId).Scroll(scrollTimeout)
+		scroll = es2Client.Scroll(config.ElkIndexFrom).Size(config.BulkSize).ScrollId(result.ScrollId).Scroll(config.ScrollTimeout)
 	}
 	close(docs)
 }

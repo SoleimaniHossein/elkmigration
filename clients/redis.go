@@ -25,7 +25,7 @@ func InitRedis(logger *zap.Logger, config *config.Config) {
 	var err error
 	RedisClient = NewRedisClient(
 		redis.NewClient(&redis.Options{
-			Addr:     config.RedisURL,
+			Addr:     config.RedisUrl,
 			Password: config.RedisPass,
 			DB:       config.RedisDb,
 		}))
