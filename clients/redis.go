@@ -3,13 +3,14 @@ package clients
 import (
 	"context"
 	"elkmigration/config"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"time"
 )
 
-var ctx = context.Background()
 var RedisClient *Redis
 
 type Redis struct {
@@ -50,14 +51,46 @@ func CloseRedis() {
 	}
 }
 
-func (r *Redis) SaveLastProcessedID(key string, value any) error {
+func (r *Redis) Save(ctx context.Context, key, value string) error {
 	return r.Client.Set(ctx, key, value, 0).Err()
 }
 
-func (r *Redis) GetLastProcessedID(key string) (string, error) {
+func (r *Redis) Get(ctx context.Context, key string) (string, error) {
 	result, err := r.Client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
 		return "", nil
 	}
 	return result, err
+}
+
+// SaveJSON saves an interface as a JSON string in Redis
+func (r *Redis) SaveJSON(ctx context.Context, key string, value interface{}) error {
+	// Marshal the value to a JSON string
+	jsonData, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	// Save the JSON string in Redis
+	if err := r.Client.Set(ctx, key, jsonData, 0).Err(); err != nil {
+		return fmt.Errorf("failed to save to Redis: %w", err)
+	}
+
+	return nil
+}
+
+// GetJSON retrieves a JSON string from Redis and unmarshals it into an interface
+func (r *Redis) GetJSON(ctx context.Context, key string, dest interface{}) error {
+	// Get the JSON string from Redis
+	jsonData, err := r.Client.Get(ctx, key).Result()
+	if err != nil {
+		return fmt.Errorf("failed to get from Redis: %w", err)
+	}
+
+	// Unmarshal the JSON string into the destination interface
+	if err := json.Unmarshal([]byte(jsonData), dest); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	return nil
 }

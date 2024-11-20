@@ -15,9 +15,9 @@ import (
 
 // Configuration for worker counts and buffer sizes
 const (
-	exportWorkers    = 20
-	transformWorkers = 10
-	importWorkers    = 10
+	exportWorkers    = 1
+	transformWorkers = 1
+	importWorkers    = 1
 	bufferSize       = 1000000
 )
 
