@@ -18,7 +18,7 @@ const (
 	exportWorkers    = 1
 	transformWorkers = 1
 	importWorkers    = 1
-	bufferSize       = 1000000
+	bufferSize       = 100000
 )
 
 func main() {

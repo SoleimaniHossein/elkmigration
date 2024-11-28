@@ -7,7 +7,6 @@ import (
 	"elkmigration/logger"
 	"encoding/json"
 	"errors"
-	"log"
 	"time"
 
 	es8 "github.com/elastic/go-elasticsearch/v8"
@@ -80,7 +79,7 @@ func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]int
 	// Send remaining documents
 	if buf.Len() > 0 {
 		if err := executeBulkRequest(client, buf.Bytes()); err != nil {
-			log.Fatalf("executeBulkRequest err: %s", err)
+			logger.Warn("executeBulkRequest err: %s", zap.Error(err))
 		}
 	}
 
