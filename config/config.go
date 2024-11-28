@@ -28,12 +28,13 @@ type Config struct {
 	MaxRetries    int    `mapstructure:"MAX_RETRIES"`
 	ScrollTimeout string `mapstructure:"SCROLL_TIMEOUT"`
 
-	RedisUrl        string `mapstructure:"REDIS_URL"`
-	RedisDb         int    `mapstructure:"REDIS_DB"`
-	RedisPass       string `mapstructure:"REDIS_PASSWORD"`
-	RedisKeyLastID  string `mapstructure:"REDIS_KEY_LAST_ID"`
-	RedisKeyLastDoc string `mapstructure:"REDIS_KEY_LAST_DOC"`
-	RedisKeyCount   string `mapstructure:"REDIS_KEY_COUNT"`
+	RedisUrl           string `mapstructure:"REDIS_URL"`
+	RedisDb            int    `mapstructure:"REDIS_DB"`
+	RedisPass          string `mapstructure:"REDIS_PASSWORD"`
+	RedisKeyLastID     string `mapstructure:"REDIS_KEY_LAST_ID"`
+	RedisKeyLastDoc    string `mapstructure:"REDIS_KEY_LAST_DOC"`
+	RedisKeyLastOffset string `mapstructure:"REDIS_KEY_LAST_OFFSET"`
+	RedisKeyCount      string `mapstructure:"REDIS_KEY_COUNT"`
 }
 
 // LoadConfig initializes the application configuration from environment variables
@@ -74,6 +75,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("REDIS_PASSWORD", nil)
 	viper.SetDefault("REDIS_KEY_LAST_ID", "id")
 	viper.SetDefault("REDIS_KEY_LAST_DOC", "doc")
+	viper.SetDefault("REDIS_KEY_LAST_OFFSET", 0)
 	viper.SetDefault("REDIS_KEY_COUNT", "count")
 
 	// Define a Config struct to hold the configuration
@@ -95,6 +97,7 @@ func LoadConfig() (*Config, error) {
 		zap.String("ELK INDEX FROM", config.ElkIndexFrom),
 		zap.String("ELK INDEX TO", config.ElkIndexTo),
 		zap.Int("BULK SIZE", config.BulkSize),
+		zap.String("LAST OFFSET", config.RedisKeyLastOffset),
 		zap.Int("MAX RETRIES", config.MaxRetries),
 		zap.String("SCROLL TIMEOUT", config.ScrollTimeout),
 		zap.String("Redis URL", config.RedisUrl),

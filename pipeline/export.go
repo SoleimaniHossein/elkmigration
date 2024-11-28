@@ -7,7 +7,6 @@ import (
 	"elkmigration/logger"
 	"elkmigration/utils"
 	"encoding/json"
-	"strconv"
 	"sync"
 	"time"
 
@@ -29,14 +28,15 @@ func ExportDocuments(client clients.ElasticsearchClient, config *config.Config, 
 	// Retrieve last processed document ID from Redis
 	mu.Lock()
 	lastID, err := redis.Get(ctx, config.RedisKeyLastID)
+	//lastCount, _ := redis.Get(ctx, config.RedisKeyCount)
+	lastOffset, _ := redis.Get(ctx, config.RedisKeyLastOffset)
 	mu.Unlock()
 
 	if err != nil {
-		logger.Error("Failed to retrieve last processed ID from Redis", zap.Error(err))
-		return
+		logger.Info("Start Process from Beginning", zap.Error(err))
 	}
 
-	resume := lastID != ""
+	resume := lastID != nil || lastOffset != nil
 
 	// Initialize Elasticsearch scroll with timeout and size
 	scroll := es2Client.Scroll(config.ElkIndexFrom).Size(config.BulkSize).Scroll(config.ScrollTimeout)
@@ -84,19 +84,24 @@ func ExportDocuments(client clients.ElasticsearchClient, config *config.Config, 
 
 			// Save the last processed document ID to Redis with a mutex lock
 			mu.Lock()
+			if err := redis.Save(ctx, config.RedisKeyLastOffset, result.ScrollId); err != nil {
+				logger.Error("Failed to save last Offset to Redis", zap.Error(err))
+			}
+			//if err := redis.Save(ctx, config.RedisKeyCount, strconv.Itoa(utils.StringToIntOrDefault(lastCount, 0)+1)); err != nil {
+			if err := redis.Save(ctx, config.RedisKeyCount, utils.IntToString(int(result.Hits.TotalHits))); err != nil {
+				logger.Error("Failed to save last count of Docs to Redis", zap.Error(err))
+			}
+
 			if err := redis.Save(ctx, config.RedisKeyLastID, hit.Id); err != nil {
 				logger.Error("Failed to save last ID to Redis", zap.Error(err))
 			}
-			lastCount, _ := redis.Get(ctx, config.RedisKeyCount)
-			if err := redis.Save(ctx, config.RedisKeyCount, strconv.Itoa(utils.StringToIntOrDefault(lastCount, 0)+1)); err != nil {
-				logger.Error("Failed to save last count of Docs to Redis", zap.Error(err))
-			}
+
 			if err := redis.SaveJSON(ctx, config.RedisKeyLastDoc, doc); err != nil {
 				logger.Error("Failed to save last Doc to Redis", zap.Error(err))
 			}
 			mu.Unlock()
 
-			logger.Info("Exported document", zap.Int("idx", idx), zap.String("hit ID", hit.Id), zap.String("last Docs Count", lastCount), zap.String("last Doc ", "in your redis..."))
+			logger.Info("Exported document", zap.Int("idx", idx), zap.String("hit ID", hit.Id), zap.String("last Offset", result.ScrollId), zap.String("last Docs Count", "test"), zap.String("last Doc ", "in your redis..."))
 		}
 
 		// Update the scroll with the current scroll ID

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"strconv"
 )
 
@@ -21,4 +22,17 @@ func StringToIntOrDefault(s string, defaultValue int) int {
 		return defaultValue
 	}
 	return num
+}
+func ToStruct[T any](input any) (T, error) {
+	var result T
+
+	// Marshal the input to JSON
+	jsonData, err := json.Marshal(input)
+	if err != nil {
+		return result, err
+	}
+
+	// Unmarshal JSON into the target struct
+	err = json.Unmarshal(jsonData, &result)
+	return result, err
 }

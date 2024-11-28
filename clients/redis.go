@@ -51,17 +51,57 @@ func CloseRedis() {
 	}
 }
 
-func (r *Redis) Save(ctx context.Context, key, value string) error {
-	return r.Client.Set(ctx, key, value, 0).Err()
+// Save a value of any type
+func (r *Redis) Save(ctx context.Context, key string, value any) error {
+	data, err := json.Marshal(value) // Serialize the value
+	if err != nil {
+		return err
+	}
+	return r.Client.Set(ctx, key, data, 0).Err()
 }
 
-func (r *Redis) Get(ctx context.Context, key string) (string, error) {
+//// Get a value and deserialize it to the specified type
+//func (r *Redis) Get(ctx context.Context, key string, dest any) error {
+//	result, err := r.Client.Get(ctx, key).Result()
+//	if errors.Is(err, redis.Nil) {
+//		return nil // Key not found, return nil error
+//	} else if err != nil {
+//		return err
+//	}
+//
+//	return json.Unmarshal([]byte(result), dest) // Deserialize to the specified type
+//}
+
+func (r *Redis) Get(ctx context.Context, key string) (dest any, err error) {
+	// Retrieve the raw result from Redis
 	result, err := r.Client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
-		return "", nil
+		return nil, errors.New("key not found") // Explicitly handle missing key
+	} else if err != nil {
+		return nil, err // Return other Redis errors
 	}
-	return result, err
+
+	// Attempt to unmarshal the JSON string into the provided destination
+	err = json.Unmarshal([]byte(result), dest)
+	if err != nil {
+		return nil, errors.New("failed to deserialize value: " + err.Error())
+	}
+
+	return dest, nil
 }
+
+//
+//func (r *Redis) Save(ctx context.Context, key string, value any) error {
+//	return r.Client.Set(ctx, key, value, 0).Err()
+//}
+//
+//func (r *Redis) Get(ctx context.Context, key string) (string, error) {
+//	result, err := r.Client.Get(ctx, key).Result()
+//	if errors.Is(err, redis.Nil) {
+//		return "", nil
+//	}
+//	return result, err
+//}
 
 // SaveJSON saves an interface as a JSON string in Redis
 func (r *Redis) SaveJSON(ctx context.Context, key string, value interface{}) error {
