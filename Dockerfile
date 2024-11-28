@@ -1,9 +1,10 @@
 ARG GO_VERSION=1.23.3
 
 FROM golang:${GO_VERSION}-alpine AS builder
-#
-## Install build dependencies
-#RUN apk add --no-cache gcc musl-dev git
+ENV EXPOSE=8080
+
+# Install build dependencies
+RUN apk add --no-cache gcc musl-dev
 
 # Install upx
 RUN apk add upx
@@ -19,13 +20,8 @@ RUN go mod download
 # Copy the rest of the application source code
 COPY . .
 
-# Enables module-aware mode, regardless of whether the project is inside or outside GOPATH.
-ENV GO111MODULE=on
-# Enable CGO and build the Go application
-ENV CGO_ENABLED=1
-
 # The -ldflags "-s -w" flags to disable the symbol table and DWARF generation that is supposed to create debugging data
-RUN go build -ldflags "-s -w" -v -o elkmigration .
+RUN go build -ldflags "-s -w" -v -o elkmigration ./cmd/main.go
 RUN upx -9 /app/elkmigration
 
 
@@ -39,7 +35,7 @@ WORKDIR /
 COPY --from=builder /app/elkmigration /elkmigration
 
 # Expose necessary ports
-EXPOSE 8080
+EXPOSE $EXPOSE
 
 # Set the entrypoint to run the app
 ENTRYPOINT ["/elkmigration"]
