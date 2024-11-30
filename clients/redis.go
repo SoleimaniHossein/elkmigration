@@ -60,22 +60,26 @@ func (r *Redis) Save(ctx context.Context, key string, value any) error {
 	return r.Client.Set(ctx, key, data, 0).Err()
 }
 
-//// Get a value and deserialize it to the specified type
-//func (r *Redis) Get(ctx context.Context, key string, dest any) error {
-//	result, err := r.Client.Get(ctx, key).Result()
-//	if errors.Is(err, redis.Nil) {
-//		return nil // Key not found, return nil error
-//	} else if err != nil {
-//		return err
-//	}
+// // Get a value and deserialize it to the specified type
 //
-//	return json.Unmarshal([]byte(result), dest) // Deserialize to the specified type
-//}
+//	func (r *Redis) Get(ctx context.Context, key string, dest any) error {
+//		result, err := r.Client.Get(ctx, key).Result()
+//		if errors.Is(err, redis.Nil) {
+//			return nil // Key not found, return nil error
+//		} else if err != nil {
+//			return err
+//		}
+//
+//		return json.Unmarshal([]byte(result), dest) // Deserialize to the specified type
+//	}
 
-func (r *Redis) Get(ctx context.Context, key string) (dest any, err error) {
+func (r *Redis) Get(ctx context.Context, key string, defaultValue any) (dest any, err error) {
 	// Retrieve the raw result from Redis
 	result, err := r.Client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
+		if defaultValue != nil {
+			return defaultValue, errors.New("set default value") // Explicitly handle missing key
+		}
 		return nil, errors.New("key not found") // Explicitly handle missing key
 	} else if err != nil {
 		return nil, err // Return other Redis errors

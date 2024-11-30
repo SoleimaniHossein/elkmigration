@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"bytes"
+	"context"
 	"elkmigration/clients"
 	"elkmigration/config"
 	"elkmigration/logger"
@@ -21,8 +22,17 @@ const (
 // ImportDocuments imports documents into Elasticsearch.
 func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, transformedDocs <-chan map[string]interface{}) {
 	esClient, ok := client.(*clients.ES8Client) // Type assertion for ES8Client
+
 	if !ok {
 		logger.Error("Invalid client type; expected *ES8Client")
+		return
+	}
+
+	// Check if the target index exists
+	ctx := context.Background()
+	_, err := esClient.Client.Indices.Exists([]string{config.ElkIndexTo}, esClient.Client.Indices.Exists.WithContext(ctx))
+	if err != nil {
+		logger.Error("Error checking if index exists", zap.Error(err))
 		return
 	}
 

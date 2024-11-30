@@ -29,13 +29,13 @@ func main() {
 		log.Printf("Total execution time: %.2f seconds", duration.Seconds())
 	}()
 
-	logger.InitLogger()
-	logger.InitZLogger()
+	logger.InitLogger("./logs/elkmigration.log")
+	//logger.InitZLogger()
 	defer logger.Log.Sync()
 
 	config, err := config.LoadConfig()
 	if err != nil {
-		logger.ZError("Config Loading err, Set Default Values... ", err)
+		logger.Error("Config Loading err, Set Default Values... ", zap.Error(err))
 	}
 
 	clients.InitRedis(logger.Log, config)
@@ -51,7 +51,7 @@ func main() {
 	// Verify the number of CPUs Go is using
 	logger.Info("Go is using %d CPUs\n", zap.Any("", runtime.GOMAXPROCS(0)))
 
-	logger.ZInfo("Starting Elasticsearch migration")
+	logger.Info("Starting Elasticsearch migration")
 
 	// Initialize Elasticsearch clients
 	es2Client, err := clients.NewElasticsearchClient(2, config.Elk2Url, config.Elk2User, config.Elk2Pass)
@@ -110,5 +110,5 @@ func main() {
 	close(docs)            // Close docs to stop transformers
 	close(transformedDocs) // Close transformedDocs to stop importers
 
-	logger.ZInfo("Elasticsearch migration completed")
+	logger.Info("Elasticsearch migration completed")
 }

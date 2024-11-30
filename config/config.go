@@ -34,7 +34,7 @@ type Config struct {
 	RedisKeyLastID     string `mapstructure:"REDIS_KEY_LAST_ID"`
 	RedisKeyLastDoc    string `mapstructure:"REDIS_KEY_LAST_DOC"`
 	RedisKeyLastOffset string `mapstructure:"REDIS_KEY_LAST_OFFSET"`
-	RedisKeyCount      string `mapstructure:"REDIS_KEY_COUNT"`
+	RedisKeyLastCount  string `mapstructure:"REDIS_KEY_LAST_Count"`
 }
 
 // LoadConfig initializes the application configuration from environment variables
@@ -76,7 +76,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("REDIS_KEY_LAST_ID", "id")
 	viper.SetDefault("REDIS_KEY_LAST_DOC", "doc")
 	viper.SetDefault("REDIS_KEY_LAST_OFFSET", 0)
-	viper.SetDefault("REDIS_KEY_COUNT", "count")
+	viper.SetDefault("REDIS_KEY_LAST_COUNT", "count")
 
 	// Define a Config struct to hold the configuration
 	var config Config
