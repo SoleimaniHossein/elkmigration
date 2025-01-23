@@ -5,10 +5,10 @@ volumes:
   elk-backups_data: {}
   elk-elasticsearch_data: {}
   elk-etc-logstash_data: {}
+  es8_data: {}
 
 services:
   app:
-#    image: elkmigration:1.0.0
     build:
       context: .
       dockerfile: Dockerfile
@@ -34,6 +34,8 @@ services:
       - REDIS_URL=${REDIS_URL:-127.0.0.1:6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - REDIS_DB=${REDIS_DB:-0}
+
+
     networks:
       - elk-net
 
@@ -41,8 +43,8 @@ services:
     image: redis:7.0
     ports:
       - "6379:6379"
-    networks:
-      - elk-net
+  #    networks:
+  #      - elk-net
 
 
   elk2:
@@ -68,11 +70,65 @@ services:
 
   elk8:
     image: elasticsearch:8.15.3
+    container_name: elk8
     environment:
       - discovery.type=single-node
-      - transport.host=127.0.0.1
-      - network.host=0.0.0.0
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - elk-net
     ports:
       - "9208:9200"
+    volumes:
+      - es8_data:/usr/share/elasticsearch/data
+
+  logstash:
+    image: logstash:8.15.3
+    container_name: logstash
+    networks:
+      - elk-net
+    ports:
+      - "5044:5044" # Beats input
+      - "9600:9600" # Logstash monitoring API
+    volumes:
+      - ./.docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    depends_on:
+      - elk8
+  #
+  #  kibana:
+  #    image: kibana:8.15.3
+  #    container_name: kibana
+  #    networks:
+  #      - elk-net
+  #    ports:
+  #      - "5601:5601"
+  #    environment:
+  #      - ELASTICSEARCH_HOSTS=http://elk8:9200
+  #    depends_on:
+  #      - elk8
+  #
+  kibana_4_6_1:
+    image: kibana:4.6.1
+    container_name: kibana_4_6_1
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_URL: "http://elk2:9200"
+    networks:
+      - elk-net
+
+  kibana_latest:
+    image: kibana:8.15.3
+    container_name: kibana_8.15.3
+    ports:
+      - "5608:5601"
+    environment:
+      ELASTICSEARCH_URL: "http://elk8:9200"
     networks:
       - elk-net

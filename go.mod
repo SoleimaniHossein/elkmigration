@@ -3,6 +3,7 @@ module elkmigration
 go 1.23.3
 
 require (
+	github.com/bxcodec/faker/v3 v3.8.1
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/elastic/go-elasticsearch/v8 v8.15.0
 	github.com/redis/go-redis/v9 v9.7.0

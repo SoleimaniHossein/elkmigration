@@ -1,4 +1,5 @@
-run: clean
+run:
+	docker compose down redis -v
 	docker compose up redis -d
 	go run ./cmd/main.go
 init:

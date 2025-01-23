@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"elkmigration/clients"
 	"elkmigration/config"
 	"elkmigration/logger"
 	"elkmigration/pipeline"
+	"gopkg.in/olivere/elastic.v3"
 	"runtime"
 	"sync"
 	"time"
@@ -15,10 +17,10 @@ import (
 
 // Configuration for worker counts and buffer sizes
 const (
-	exportWorkers    = 1
-	transformWorkers = 1
-	importWorkers    = 1
-	bufferSize       = 100000
+	exportWorkers    = 4
+	transformWorkers = 4
+	importWorkers    = 4
+	bufferSize       = 40000
 )
 
 func main() {
@@ -33,12 +35,14 @@ func main() {
 	//logger.InitZLogger()
 	defer logger.Log.Sync()
 
-	config, err := config.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Error("Config Loading err, Set Default Values... ", zap.Error(err))
 	}
 
-	clients.InitRedis(logger.Log, config)
+	//utils.Generate(config)
+	//return
+	clients.InitRedis(logger.Log, cfg)
 	defer clients.CloseRedis()
 
 	// Get the number of available CPU cores
@@ -54,23 +58,24 @@ func main() {
 	logger.Info("Starting Elasticsearch migration")
 
 	// Initialize Elasticsearch clients
-	es2Client, err := clients.NewElasticsearchClient(2, config.Elk2Url, config.Elk2User, config.Elk2Pass)
+	es2Client, err := clients.NewElasticsearchClient(2, cfg.Elk2Url, cfg.Elk2User, cfg.Elk2Pass)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 2.x client", zap.Error(err))
 		return
 	}
 
-	es8Client, err := clients.NewElasticsearchClient(8, config.Elk8Url, config.ELK8User, config.Elk8Pass)
+	es8Client, err := clients.NewElasticsearchClient(8, cfg.Elk8Url, cfg.ELK8User, cfg.Elk8Pass)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 8.x client", zap.Error(err))
 		return
 	}
 
 	// Channels for pipeline stages with buffer
-	docs := make(chan map[string]interface{}, bufferSize)
+	docs := make(chan *elastic.SearchResult, bufferSize)
 	transformedDocs := make(chan map[string]interface{}, bufferSize)
+	var ctx = context.Background()
 	var wg sync.WaitGroup
-	var mu sync.Mutex // Mutex for shared resources
+	var mu sync.Mutex
 
 	// Export stage worker pool
 	for i := 0; i < exportWorkers; i++ {
@@ -78,7 +83,7 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			logger.Info("Starting export worker", zap.Int("workerID", workerID))
-			pipeline.ExportDocuments(es2Client, config, docs, clients.RedisClient, &mu)
+			pipeline.ExportDocuments(ctx, es2Client, cfg, docs, clients.RedisClient, &mu)
 			logger.Info("Export worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
@@ -100,15 +105,15 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			logger.Info("Starting import worker", zap.Int("workerID", workerID))
-			pipeline.ImportDocuments(es8Client, config, transformedDocs)
+			pipeline.ImportDocuments(es8Client, cfg, transformedDocs)
 			logger.Info("Import worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
 
 	// Close channels after all work is done
 	wg.Wait()
-	close(docs)            // Close docs to stop transformers
-	close(transformedDocs) // Close transformedDocs to stop importers
+	//close(docs)            // Close docs to stop transformers
+	//close(transformedDocs) // Close transformedDocs to stop importers
 
 	logger.Info("Elasticsearch migration completed")
 }
