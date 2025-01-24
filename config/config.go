@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"log"
+	"time"
 )
 
 // Config holds the application configuration
@@ -24,9 +25,11 @@ type Config struct {
 	ELK8User string `mapstructure:"ELK8_USER"`
 	Elk8Pass string `mapstructure:"ELK8_PASS"`
 
-	BulkSize      int    `mapstructure:"BULK_SIZE"`
-	MaxRetries    int    `mapstructure:"MAX_RETRIES"`
-	ScrollTimeout string `mapstructure:"SCROLL_TIMEOUT"`
+	BulkSize            int           `mapstructure:"BULK_SIZE"`
+	MaxBulkPayloadBytes int           `mapstructure:"MAX_BULK_PAYLOAD_BYTES"`
+	MaxRetries          int           `mapstructure:"MAX_RETRIES"`
+	ScrollTimeout       string        `mapstructure:"SCROLL_TIMEOUT"`
+	Timeout             time.Duration `mapstructure:"TIMEOUT"`
 
 	RedisUrl           string `mapstructure:"REDIS_URL"`
 	RedisDb            int    `mapstructure:"REDIS_DB"`
@@ -35,6 +38,7 @@ type Config struct {
 	RedisKeyLastDoc    string `mapstructure:"REDIS_KEY_LAST_DOC"`
 	RedisKeyLastOffset string `mapstructure:"REDIS_KEY_LAST_OFFSET"`
 	RedisKeyLastCount  string `mapstructure:"REDIS_KEY_LAST_Count"`
+	LogPath            string `mapstructure:"LOG_PATH"`
 }
 
 // LoadConfig initializes the application configuration from environment variables
@@ -77,6 +81,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("REDIS_KEY_LAST_DOC", "doc")
 	viper.SetDefault("REDIS_KEY_LAST_OFFSET", 0)
 	viper.SetDefault("REDIS_KEY_LAST_COUNT", "count")
+	viper.SetDefault("LOG_PATH", "./logs/app.log")
 
 	// Define a Config struct to hold the configuration
 	var config Config
@@ -97,10 +102,13 @@ func LoadConfig() (*Config, error) {
 		zap.String("ELK INDEX FROM", config.ElkIndexFrom),
 		zap.String("ELK INDEX TO", config.ElkIndexTo),
 		zap.Int("BULK SIZE", config.BulkSize),
+		zap.Int("MAX BULK PAYLOAD BYTES", config.MaxBulkPayloadBytes),
 		zap.String("LAST OFFSET", config.RedisKeyLastOffset),
 		zap.Int("MAX RETRIES", config.MaxRetries),
 		zap.String("SCROLL TIMEOUT", config.ScrollTimeout),
+		zap.Duration("TIMEOUT", config.Timeout),
 		zap.String("Redis URL", config.RedisUrl),
+		zap.String("Log Path", config.LogPath),
 	)
 
 	return &config, nil

@@ -18,7 +18,6 @@ func TransformDocuments(result <-chan *elastic.SearchResult, transformedDocs cha
 				logger.Warn("Error unmarshalling document", zap.Error(err))
 				continue
 			}
-
 			transformedDocs <- doc
 		}
 	}

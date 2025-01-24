@@ -6,17 +6,11 @@ import (
 	"elkmigration/clients"
 	"elkmigration/config"
 	"elkmigration/logger"
+	"elkmigration/utils"
 	"encoding/json"
 	"errors"
-	"time"
-
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"go.uber.org/zap"
-)
-
-const (
-	retryDelay          = 1 * time.Second   // Delay between retries on failure
-	maxBulkPayloadBytes = 100 * 1024 * 1024 // Set a 100MB limit per bulk request
 )
 
 // ImportDocuments imports documents into Elasticsearch.
@@ -43,23 +37,27 @@ func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, 
 
 		// Send bulk request when reaching the bulkSize
 		if len(bulkData) >= config.BulkSize {
-			if err := sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData); err != nil {
-				logger.Warn("Error during bulk insert, retrying...", zap.Error(err))
-				time.Sleep(retryDelay)
+
+			err = utils.Retry(ctx, config.MaxRetries, config.Timeout, func() error {
+				return sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData, config.MaxBulkPayloadBytes)
+			})
+			if err != nil {
+				logger.Error("Error sending bulk request", zap.Error(err))
 			}
+
 			bulkData = bulkData[:0] // Reset the bulk data buffer
 		}
 	}
 
 	// Send any remaining documents
 	if len(bulkData) > 0 {
-		if err := sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData); err != nil {
+		if err := sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData, config.MaxBulkPayloadBytes); err != nil {
 			logger.Error("Error during final bulk insert", zap.Error(err))
 		}
 	}
 }
 
-func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]interface{}) error {
+func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 

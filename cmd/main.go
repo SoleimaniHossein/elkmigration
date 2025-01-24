@@ -11,37 +11,38 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"go.uber.org/zap"
 )
 
 // Configuration for worker counts and buffer sizes
 const (
-	exportWorkers    = 4
-	transformWorkers = 4
-	importWorkers    = 4
-	bufferSize       = 40000
+	exportWorkers    = 1
+	transformWorkers = 1
+	importWorkers    = 1
 )
 
 func main() {
 	// Record the start time
 	start := time.Now()
+	var totalProcessed int
 	defer func() {
 		duration := time.Since(start)
-		log.Printf("Total execution time: %.2f seconds", duration.Seconds())
+		logger.Info("Elasticsearch migration completed.\n", zap.Int("Total Processed\n", totalProcessed), zap.Duration("Total Duration Time\n", duration))
+		//log.Printf("Total execution time: %.2f seconds", duration.Seconds())
 	}()
-
-	logger.InitLogger("./logs/elkmigration.log")
-	//logger.InitZLogger()
-	defer logger.Log.Sync()
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Error("Config Loading err, Set Default Values... ", zap.Error(err))
 	}
 
+	logger.InitLogger(cfg.LogPath)
+	defer logger.Log.Sync()
+
+	// if you want fake data generate please uncomment this code:
 	//utils.Generate(config)
 	//return
+
 	clients.InitRedis(logger.Log, cfg)
 	defer clients.CloseRedis()
 
@@ -71,8 +72,8 @@ func main() {
 	}
 
 	// Channels for pipeline stages with buffer
-	docs := make(chan *elastic.SearchResult, bufferSize)
-	transformedDocs := make(chan map[string]interface{}, bufferSize)
+	docs := make(chan *elastic.SearchResult, cfg.BulkSize)
+	transformedDocs := make(chan map[string]interface{}, cfg.BulkSize)
 	var ctx = context.Background()
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -114,6 +115,4 @@ func main() {
 	wg.Wait()
 	//close(docs)            // Close docs to stop transformers
 	//close(transformedDocs) // Close transformedDocs to stop importers
-
-	logger.Info("Elasticsearch migration completed")
 }
