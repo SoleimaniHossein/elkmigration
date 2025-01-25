@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/bxcodec/faker/v3"
@@ -15,7 +16,8 @@ import (
 
 // FakeDocument represents a single fake JSON document.
 type FakeDocument struct {
-	ID           string   `json:"id"`
+	ID           string   `json:"uuid"`
+	Counter      int      `faker:"id"`
 	Name         string   `json:"name"`
 	Email        string   `json:"email"`
 	PhoneNumber  string   `json:"phone_number"`
@@ -27,12 +29,13 @@ type FakeDocument struct {
 }
 
 // GenerateFakeDocument creates a single fake document.
-func GenerateFakeDocument() FakeDocument {
+func GenerateFakeDocument(counter int) FakeDocument {
 	statusOptions := []string{"active", "inactive", "pending"}
 	tagsOptions := []string{"tag1", "tag2", "tag3", "tag4", "tag5"}
 
 	return FakeDocument{
 		ID:           faker.UUIDDigit(),
+		Counter:      generateSequentialID(counter),
 		Name:         faker.Name(),
 		Email:        faker.Email(),
 		PhoneNumber:  faker.Phonenumber(),
@@ -56,7 +59,7 @@ func Generate(config *config.Config) {
 	var bulkBuffer bytes.Buffer
 
 	for i := 0; i < numRecords; i++ {
-		doc := GenerateFakeDocument()
+		doc := GenerateFakeDocument(i)
 
 		// Add metadata line
 		meta := fmt.Sprintf(`{ "index" : { "_id" : "%s" } }`, doc.ID)
@@ -92,4 +95,9 @@ func Generate(config *config.Config) {
 	}
 
 	fmt.Println("Data generation and indexing complete.")
+}
+func generateSequentialID(counter int) int {
+	var idCounter int32
+	idCounter = int32(counter)
+	return int(atomic.AddInt32(&idCounter, 1))
 }

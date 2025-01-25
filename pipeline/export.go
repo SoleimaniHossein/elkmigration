@@ -6,29 +6,32 @@ import (
 	"elkmigration/config"
 	"elkmigration/logger"
 	"elkmigration/utils"
+	"fmt"
 	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v3"
-	"sync"
 )
 
 // ExportDocuments exports documents from Elasticsearch 2.x, with state-saving to Redis.
 // Accepts a mutex to prevent race conditions when accessing Redis.
-func ExportDocuments(ctx context.Context, client clients.ElasticsearchClient, config *config.Config, docs chan<- *elastic.SearchResult, redis *clients.Redis, mu *sync.Mutex) {
+func ExportDocuments(ctx context.Context, client clients.ElasticsearchClient, config *config.Config, docs chan<- *elastic.SearchResult, redis *clients.RedisClient) {
 	defer close(docs)
-	mu.Lock()
-	defer mu.Unlock()
 
 	es2Client := client.(*clients.ES2Client).Client
 
 	// Retrieve the last processed document ID from Redis
-	lastOffset, _ := redis.Get(ctx, config.RedisKeyLastOffset, 0)
-
+	offset, err := redis.Get(config.RedisKeyLastOffset)
+	if err != nil {
+		logger.Error("Error getting last offset", zap.Error(err))
+		return
+	}
+	logger.Info(fmt.Sprintf("offset =>  %s", offset))
 	// Initialize the scroll request
 	scroll := es2Client.Scroll(config.ElkIndexFrom).Size(config.BulkSize).Scroll(config.ScrollTimeout)
 
-	if lastOffset != 0 {
+	if offset != "" {
 		logger.Info("Reached end of index")
-		scroll = scroll.ScrollId(lastOffset.(string))
+		logger.Info(offset)
+		scroll = scroll.ScrollId(offset)
 	}
 
 	for {
@@ -52,7 +55,7 @@ func ExportDocuments(ctx context.Context, client clients.ElasticsearchClient, co
 		docs <- result
 
 		// Save the latest ScrollID to Redis
-		if err := redis.Save(ctx, config.RedisKeyLastOffset, result.ScrollId); err != nil {
+		if err := redis.Set(config.RedisKeyLastOffset, result.ScrollId, config.Timeout); err != nil {
 			logger.Error("Failed to save last ScrollID to Redis", zap.Error(err))
 		} else {
 			logger.Info("Updated ScrollID in Redis", zap.String("ScrollID", result.ScrollId))

@@ -24,14 +24,15 @@ const (
 func main() {
 	// Record the start time
 	start := time.Now()
-	var totalProcessed int
+
 	defer func() {
 		duration := time.Since(start)
-		logger.Info("Elasticsearch migration completed.\n", zap.Int("Total Processed\n", totalProcessed), zap.Duration("Total Duration Time\n", duration))
-		//log.Printf("Total execution time: %.2f seconds", duration.Seconds())
+		logger.Info("Elasticsearch migration completed.", zap.Duration("Total Duration Time", duration))
 	}()
 
+	var ctx = context.Background()
 	cfg, err := config.LoadConfig()
+
 	if err != nil {
 		logger.Error("Config Loading err, Set Default Values... ", zap.Error(err))
 	}
@@ -40,10 +41,10 @@ func main() {
 	defer logger.Log.Sync()
 
 	// if you want fake data generate please uncomment this code:
-	//utils.Generate(config)
+	//utils.Generate(cfg)
 	//return
 
-	clients.InitRedis(logger.Log, cfg)
+	clients.InitRedis(ctx, logger.Log, cfg)
 	defer clients.CloseRedis()
 
 	// Get the number of available CPU cores
@@ -74,9 +75,8 @@ func main() {
 	// Channels for pipeline stages with buffer
 	docs := make(chan *elastic.SearchResult, cfg.BulkSize)
 	transformedDocs := make(chan map[string]interface{}, cfg.BulkSize)
-	var ctx = context.Background()
 	var wg sync.WaitGroup
-	var mu sync.Mutex
+	//var mu sync.Mutex
 
 	// Export stage worker pool
 	for i := 0; i < exportWorkers; i++ {
@@ -84,7 +84,7 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			logger.Info("Starting export worker", zap.Int("workerID", workerID))
-			pipeline.ExportDocuments(ctx, es2Client, cfg, docs, clients.RedisClient, &mu)
+			pipeline.ExportDocuments(ctx, es2Client, cfg, docs, clients.RC)
 			logger.Info("Export worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
@@ -110,9 +110,6 @@ func main() {
 			logger.Info("Import worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
-
-	// Close channels after all work is done
+	
 	wg.Wait()
-	//close(docs)            // Close docs to stop transformers
-	//close(transformedDocs) // Close transformedDocs to stop importers
 }

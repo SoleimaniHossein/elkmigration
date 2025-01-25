@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var totalProcessed int
+
 // ImportDocuments imports documents into Elasticsearch.
 func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, transformedDocs <-chan map[string]interface{}) {
 	esClient, ok := client.(*clients.ES8Client) // Type assertion for ES8Client
@@ -44,7 +46,6 @@ func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, 
 			if err != nil {
 				logger.Error("Error sending bulk request", zap.Error(err))
 			}
-
 			bulkData = bulkData[:0] // Reset the bulk data buffer
 		}
 	}
@@ -63,6 +64,7 @@ func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]int
 
 	// Prepare bulk request format
 	for _, doc := range bulkData {
+		totalProcessed++
 		meta := map[string]interface{}{
 			"index": map[string]interface{}{
 				"_index": index,
@@ -91,7 +93,8 @@ func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]int
 		}
 	}
 
-	logger.Info("Bulk request completed", zap.Int("documents_count", len(bulkData)))
+	logger.Info("Bulk request completed", zap.Int("documents_count", totalProcessed))
+
 	return nil
 }
 

@@ -8,7 +8,6 @@ import (
 )
 
 func TransformDocuments(result <-chan *elastic.SearchResult, transformedDocs chan<- map[string]interface{}) {
-
 	defer close(transformedDocs)
 
 	for res := range result {
