@@ -40,7 +40,7 @@ func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, 
 		// Send bulk request when reaching the bulkSize
 		if len(bulkData) >= config.BulkSize {
 
-			err = utils.Retry(ctx, config.MaxRetries, config.Timeout, func() error {
+			err = utils.Retry(ctx, config.MaxRetries, config.TTL, func() error {
 				return sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData, config.MaxBulkPayloadBytes)
 			})
 			if err != nil {

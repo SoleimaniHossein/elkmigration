@@ -44,7 +44,7 @@ func main() {
 	//utils.Generate(cfg)
 	//return
 
-	clients.InitRedis(ctx, logger.Log, cfg)
+	clients.InitRedis(ctx, cfg)
 	defer clients.CloseRedis()
 
 	// Get the number of available CPU cores
@@ -76,7 +76,7 @@ func main() {
 	docs := make(chan *elastic.SearchResult, cfg.BulkSize)
 	transformedDocs := make(chan map[string]interface{}, cfg.BulkSize)
 	var wg sync.WaitGroup
-	//var mu sync.Mutex
+	var mu sync.Mutex
 
 	// Export stage worker pool
 	for i := 0; i < exportWorkers; i++ {
@@ -84,7 +84,7 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			logger.Info("Starting export worker", zap.Int("workerID", workerID))
-			pipeline.ExportDocuments(ctx, es2Client, cfg, docs, clients.RC)
+			pipeline.ExportDocuments(ctx, es2Client, cfg, docs, clients.RC, &mu)
 			logger.Info("Export worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
@@ -110,6 +110,6 @@ func main() {
 			logger.Info("Import worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
-	
+
 	wg.Wait()
 }

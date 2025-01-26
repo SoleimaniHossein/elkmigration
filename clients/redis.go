@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
+	"log"
+	"strconv"
 	"time"
 )
 
@@ -25,8 +26,7 @@ func NewRedisClient(ctx context.Context, client *redis.Client) *RedisClient {
 }
 
 // InitRedis initializes the Redis client with a retry mechanism.
-func InitRedis(ctx context.Context, logger *zap.Logger, config *config.Config) {
-	var err error
+func InitRedis(ctx context.Context, config *config.Config) {
 	RC = NewRedisClient(ctx,
 		redis.NewClient(&redis.Options{
 			Addr:     config.RedisUrl,
@@ -34,17 +34,9 @@ func InitRedis(ctx context.Context, logger *zap.Logger, config *config.Config) {
 			DB:       config.RedisDb,
 		}))
 
-	for attempts := 0; attempts < 5; attempts++ {
-
-		_, err = RC.Client.Ping(ctx).Result()
-		if err == nil {
-			logger.Info("Connected to Redis successfully")
-			return
-		}
-		logger.Warn("Failed to connect to Redis, retrying...", zap.Int("attempt", attempts+1))
-		time.Sleep(2 * time.Second)
+	if err := RC.Client.Ping(RC.Ctx).Err(); err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
-	logger.Fatal("Unable to connect to Redis after multiple attempts", zap.Error(err))
 }
 
 // CloseRedis closes the Redis client connection.
@@ -78,4 +70,29 @@ func (rc *RedisClient) Close() error {
 		return fmt.Errorf("failed to close Redis client: %w", err)
 	}
 	return nil
+}
+
+// GetOffsetFromRedis retrieves the saved offset from Redis.
+func (rc *RedisClient) GetOffsetFromRedis(key string) (int, error) {
+	val, err := rc.Client.Get(rc.Ctx, key).Result()
+	if errors.Is(err, redis.Nil) {
+		// Key does not exist, start from offset 0
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+
+	// Parse the offset value
+	offset, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, fmt.Errorf("invalid offset value in Redis: %w", err)
+	}
+
+	return offset, nil
+}
+
+// SaveOffsetToRedis saves the current offset to Redis.
+func (rc *RedisClient) SaveOffsetToRedis(key string, offset int) error {
+	err := rc.Client.Set(rc.Ctx, key, strconv.Itoa(offset), 0).Err()
+	return err
 }

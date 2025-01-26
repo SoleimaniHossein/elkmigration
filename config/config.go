@@ -25,20 +25,19 @@ type Config struct {
 	ELK8User string `mapstructure:"ELK8_USER"`
 	Elk8Pass string `mapstructure:"ELK8_PASS"`
 
-	BulkSize            int           `mapstructure:"BULK_SIZE"`
-	MaxBulkPayloadBytes int           `mapstructure:"MAX_BULK_PAYLOAD_BYTES"`
-	MaxRetries          int           `mapstructure:"MAX_RETRIES"`
-	ScrollTimeout       string        `mapstructure:"SCROLL_TIMEOUT"`
-	Timeout             time.Duration `mapstructure:"TIMEOUT"`
+	BulkSize            int    `mapstructure:"BULK_SIZE"`
+	MaxBulkPayloadBytes int    `mapstructure:"MAX_BULK_PAYLOAD_BYTES"`
+	MaxRetries          int    `mapstructure:"MAX_RETRIES"`
+	ScrollTTL           string `mapstructure:"SCROLL_TTL"`
 
-	RedisUrl           string `mapstructure:"REDIS_URL"`
-	RedisDb            int    `mapstructure:"REDIS_DB"`
-	RedisPass          string `mapstructure:"REDIS_PASSWORD"`
-	RedisKeyLastID     string `mapstructure:"REDIS_KEY_LAST_ID"`
-	RedisKeyLastDoc    string `mapstructure:"REDIS_KEY_LAST_DOC"`
-	RedisKeyLastOffset string `mapstructure:"REDIS_KEY_LAST_OFFSET"`
-	RedisKeyLastCount  string `mapstructure:"REDIS_KEY_LAST_Count"`
-	LogPath            string `mapstructure:"LOG_PATH"`
+	RedisUrl         string        `mapstructure:"REDIS_URL"`
+	RedisDb          int           `mapstructure:"REDIS_DB"`
+	RedisPass        string        `mapstructure:"REDIS_PASSWORD"`
+	RedisTTL         time.Duration `mapstructure:"REDIS_TTL"`
+	RedisKeyScrollID string        `mapstructure:"REDIS_KEY_SCROLL_ID"`
+
+	TTL     time.Duration `mapstructure:"TTL"`
+	LogPath string        `mapstructure:"LOG_PATH"`
 }
 
 // LoadConfig initializes the application configuration from environment variables
@@ -72,15 +71,15 @@ func LoadConfig() (*Config, error) {
 
 	viper.SetDefault("BULK_SIZE", "1000")
 	viper.SetDefault("MAX_RETRIES", "60")
-	viper.SetDefault("SCROLL_TIMEOUT", "1m")
+	viper.SetDefault("SCROLL_TTL", "1m")
 
 	viper.SetDefault("REDIS_URL", "127.0.0.1:6379")
 	viper.SetDefault("REDIS_DB", 0)
 	viper.SetDefault("REDIS_PASSWORD", nil)
-	viper.SetDefault("REDIS_KEY_LAST_ID", "id")
-	viper.SetDefault("REDIS_KEY_LAST_DOC", "doc")
-	viper.SetDefault("REDIS_KEY_LAST_OFFSET", 0)
-	viper.SetDefault("REDIS_KEY_LAST_COUNT", "count")
+	viper.SetDefault("REDIS_TTL", "1m")
+	viper.SetDefault("REDIS_KEY_SCROLL_ID", nil)
+
+	viper.SetDefault("TTL", "6s")
 	viper.SetDefault("LOG_PATH", "./logs/app.log")
 
 	// Define a Config struct to hold the configuration
@@ -103,12 +102,13 @@ func LoadConfig() (*Config, error) {
 		zap.String("ELK INDEX TO", config.ElkIndexTo),
 		zap.Int("BULK SIZE", config.BulkSize),
 		zap.Int("MAX BULK PAYLOAD BYTES", config.MaxBulkPayloadBytes),
-		zap.String("LAST OFFSET", config.RedisKeyLastOffset),
 		zap.Int("MAX RETRIES", config.MaxRetries),
-		zap.String("SCROLL TIMEOUT", config.ScrollTimeout),
-		zap.Duration("TIMEOUT", config.Timeout),
-		zap.String("Redis URL", config.RedisUrl),
-		zap.String("Log Path", config.LogPath),
+		zap.String("SCROLL TIMEOUT", config.ScrollTTL),
+		zap.String("REDIS URL", config.RedisUrl),
+		zap.Duration("REDIS TTL", config.RedisTTL),
+		zap.String("REDIS KEY SCROLL ID", config.RedisKeyScrollID),
+		zap.Duration("TIMEOUT", config.TTL),
+		zap.String("LOG PATH", config.LogPath),
 	)
 
 	return &config, nil
