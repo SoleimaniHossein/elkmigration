@@ -9,14 +9,18 @@ import (
 	"elkmigration/utils"
 	"encoding/json"
 	"errors"
+	"fmt"
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"go.uber.org/zap"
+	"strconv"
+	"sync/atomic"
 )
 
-var totalProcessed int
+var totalProcessed int64 = 0
 
-// ImportDocuments imports documents into Elasticsearch.
-func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, transformedDocs <-chan map[string]interface{}) {
+func ImportDocuments(ctx context.Context, config *config.Config, client clients.ElasticsearchClient, redisClient *clients.RedisClient, transformedDocs <-chan map[string]interface{}) {
+	redisClient.Ctx = ctx
+
 	esClient, ok := client.(*clients.ES8Client) // Type assertion for ES8Client
 
 	if !ok {
@@ -24,24 +28,22 @@ func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, 
 		return
 	}
 
-	// Check if the target index exists
-	ctx := context.Background()
-	_, err := esClient.Client.Indices.Exists([]string{config.ElkIndexTo}, esClient.Client.Indices.Exists.WithContext(ctx))
+	_, err := esClient.Client.Indices.Exists([]string{config.Elk8.Index}, esClient.Client.Indices.Exists.WithContext(ctx))
 	if err != nil {
 		logger.Error("Error checking if index exists", zap.Error(err))
 		return
 	}
 
-	bulkData := make([]map[string]interface{}, 0, config.BulkSize)
+	bulkData := make([]map[string]interface{}, 0, config.App.BulkSize)
 
 	for doc := range transformedDocs {
 		bulkData = append(bulkData, doc)
 
 		// Send bulk request when reaching the bulkSize
-		if len(bulkData) >= config.BulkSize {
+		if len(bulkData) >= config.App.BulkSize {
 
-			err = utils.Retry(ctx, config.MaxRetries, config.TTL, func() error {
-				return sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData, config.MaxBulkPayloadBytes)
+			err = utils.Retry(ctx, config.App.MaxRetries, config.App.TTL, func() error {
+				return sendBulkRequest(config, esClient.Client, redisClient, config.Elk8.Index, bulkData, config.App.MaxBulkPayloadBytes)
 			})
 			if err != nil {
 				logger.Error("Error sending bulk request", zap.Error(err))
@@ -52,19 +54,28 @@ func ImportDocuments(client clients.ElasticsearchClient, config *config.Config, 
 
 	// Send any remaining documents
 	if len(bulkData) > 0 {
-		if err := sendBulkRequest(esClient.Client, config.ElkIndexTo, bulkData, config.MaxBulkPayloadBytes); err != nil {
+		if err := sendBulkRequest(config, esClient.Client, redisClient, config.Elk8.Index, bulkData, config.App.MaxBulkPayloadBytes); err != nil {
 			logger.Error("Error during final bulk insert", zap.Error(err))
 		}
 	}
 }
 
-func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
+func sendBulkRequest(config *config.Config, client *es8.Client, redisClient *clients.RedisClient, index string, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-
+	totalProcessed = updateTotalProcessed(redisClient, config.Redis)
 	// Prepare bulk request format
 	for _, doc := range bulkData {
-		totalProcessed++
+
+		atomic.AddInt64(&totalProcessed, 1)
+
+		err := redisClient.Set(config.Redis.KeyTotalProcessed, totalProcessed, config.Redis.TTL)
+
+		if err != nil {
+			logger.Warn("failed to save totalProcessed to Redis", zap.Error(err))
+			return err
+		}
+
 		meta := map[string]interface{}{
 			"index": map[string]interface{}{
 				"_index": index,
@@ -93,7 +104,7 @@ func sendBulkRequest(client *es8.Client, index string, bulkData []map[string]int
 		}
 	}
 
-	logger.Info("Bulk request completed", zap.Int("documents_count", totalProcessed))
+	logger.Info("Bulk request completed", zap.Int64("documents_count", totalProcessed))
 
 	return nil
 }
@@ -112,4 +123,21 @@ func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
 		return errors.New("bulk request failed")
 	}
 	return nil
+}
+
+func updateTotalProcessed(redisClient *clients.RedisClient, redisConfig config.Redis) int64 {
+	stringValue, err := redisClient.Get(redisConfig.KeyTotalProcessed)
+
+	if err != nil {
+		logger.Warn("not found total processed", zap.Error(err))
+		return 0
+	}
+
+	val, err := strconv.ParseInt(stringValue, 10, 64)
+	if err != nil {
+		fmt.Println("Error converting string to int64:", err)
+		return 0
+	}
+
+	return val
 }

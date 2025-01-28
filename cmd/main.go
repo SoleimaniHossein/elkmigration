@@ -6,9 +6,13 @@ import (
 	"elkmigration/config"
 	"elkmigration/logger"
 	"elkmigration/pipeline"
+	"fmt"
 	"gopkg.in/olivere/elastic.v3"
+	"os"
+	"os/signal"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -22,7 +26,6 @@ const (
 )
 
 func main() {
-	// Record the start time
 	start := time.Now()
 
 	defer func() {
@@ -30,21 +33,22 @@ func main() {
 		logger.Info("Elasticsearch migration completed.", zap.Duration("Total Duration Time", duration))
 	}()
 
-	var ctx = context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+
 	cfg, err := config.LoadConfig()
 
 	if err != nil {
 		logger.Error("Config Loading err, Set Default Values... ", zap.Error(err))
 	}
 
-	logger.InitLogger(cfg.LogPath)
+	logger.InitLogger(cfg.App.LogPath)
 	defer logger.Log.Sync()
 
-	// if you want fake data generate please uncomment this code:
-	//utils.Generate(cfg)
-	//return
-
-	clients.InitRedis(ctx, cfg)
+	clients.InitRedis(ctx, &mu, cfg.Redis)
 	defer clients.CloseRedis()
 
 	// Get the number of available CPU cores
@@ -57,59 +61,56 @@ func main() {
 	// Verify the number of CPUs Go is using
 	logger.Info("Go is using %d CPUs\n", zap.Any("", runtime.GOMAXPROCS(0)))
 
-	logger.Info("Starting Elasticsearch migration")
+	logger.Info("Starting Elasticsearch migration...")
 
 	// Initialize Elasticsearch clients
-	es2Client, err := clients.NewElasticsearchClient(2, cfg.Elk2Url, cfg.Elk2User, cfg.Elk2Pass)
+	es2Client, err := clients.NewElasticsearchClient(2, cfg.Elk2.Url, cfg.Elk2.User, cfg.Elk2.Pass)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 2.x client", zap.Error(err))
 		return
 	}
 
-	es8Client, err := clients.NewElasticsearchClient(8, cfg.Elk8Url, cfg.ELK8User, cfg.Elk8Pass)
+	es8Client, err := clients.NewElasticsearchClient(8, cfg.Elk8.Url, cfg.Elk8.User, cfg.Elk8.Pass)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 8.x client", zap.Error(err))
 		return
 	}
 
-	// Channels for pipeline stages with buffer
-	docs := make(chan *elastic.SearchResult, cfg.BulkSize)
-	transformedDocs := make(chan map[string]interface{}, cfg.BulkSize)
-	var wg sync.WaitGroup
-	var mu sync.Mutex
+	docs := make(chan *elastic.SearchResult, cfg.App.BulkSize)
+	transformedDocs := make(chan map[string]interface{}, cfg.App.BulkSize)
 
-	// Export stage worker pool
 	for i := 0; i < exportWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			logger.Info("Starting export worker", zap.Int("workerID", workerID))
-			pipeline.ExportDocuments(ctx, es2Client, cfg, docs, clients.RC, &mu)
-			logger.Info("Export worker completed", zap.Int("workerID", workerID))
+			pipeline.ExportDocuments(ctx, cfg, es2Client, docs, clients.RC)
 		}(i)
 	}
 
-	// Transform stage worker pool
 	for i := 0; i < transformWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			logger.Info("Starting transform worker", zap.Int("workerID", workerID))
 			pipeline.TransformDocuments(docs, transformedDocs)
-			logger.Info("Transform worker completed", zap.Int("workerID", workerID))
 		}(i)
 	}
 
-	// Import stage worker pool
+	ctxImport, _ := context.WithCancel(context.Background())
 	for i := 0; i < importWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			logger.Info("Starting import worker", zap.Int("workerID", workerID))
-			pipeline.ImportDocuments(es8Client, cfg, transformedDocs)
-			logger.Info("Import worker completed", zap.Int("workerID", workerID))
+			pipeline.ImportDocuments(ctxImport, cfg, es8Client, clients.RC, transformedDocs)
 		}(i)
 	}
 
+	go func() {
+		sig := <-signalChan
+		fmt.Printf("Received signal: %s\n", sig)
+		cancel()
+		close(signalChan)
+	}()
+
 	wg.Wait()
+
 }

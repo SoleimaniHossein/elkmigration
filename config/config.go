@@ -8,42 +8,57 @@ import (
 	"time"
 )
 
+type App struct {
+	BulkSize            int
+	MaxBulkPayloadBytes int
+	ScrollTTL           time.Duration
+	TTL                 time.Duration
+	MaxRetries          int
+	LogPath             string
+}
+type Elk2 struct {
+	Url   string
+	Index string
+	User  string
+	Pass  string
+}
+
+type Elk7 struct {
+	Url   string
+	Index string
+	User  string
+	Pass  string
+}
+
+type Elk8 struct {
+	Url   string
+	Index string
+	User  string
+	Pass  string
+}
+
+type Redis struct {
+	Addr              string
+	DB                int
+	Pass              string
+	KeyScrollID       string
+	KeyTotalProcessed string
+	TTL               time.Duration
+}
+
 // Config holds the application configuration
 type Config struct {
-	ElkIndexFrom string `mapstructure:"ELK_INDEX_FROM"`
-	ElkIndexTo   string `mapstructure:"ELK_INDEX_TO"`
-
-	Elk2Url  string `mapstructure:"ELK2_URL"`
-	Elk2User string `mapstructure:"ELK2_USER"`
-	Elk2Pass string `mapstructure:"ELK2_PASS"`
-
-	Elk7Url  string `mapstructure:"ELK7_URL"`
-	Elk7User string `mapstructure:"ELK7_USER"`
-	Elk7Pass string `mapstructure:"ELK7_PASS"`
-
-	Elk8Url  string `mapstructure:"ELK8_URL"`
-	ELK8User string `mapstructure:"ELK8_USER"`
-	Elk8Pass string `mapstructure:"ELK8_PASS"`
-
-	BulkSize            int    `mapstructure:"BULK_SIZE"`
-	MaxBulkPayloadBytes int    `mapstructure:"MAX_BULK_PAYLOAD_BYTES"`
-	MaxRetries          int    `mapstructure:"MAX_RETRIES"`
-	ScrollTTL           string `mapstructure:"SCROLL_TTL"`
-
-	RedisUrl         string        `mapstructure:"REDIS_URL"`
-	RedisDb          int           `mapstructure:"REDIS_DB"`
-	RedisPass        string        `mapstructure:"REDIS_PASSWORD"`
-	RedisTTL         time.Duration `mapstructure:"REDIS_TTL"`
-	RedisKeyScrollID string        `mapstructure:"REDIS_KEY_SCROLL_ID"`
-
-	TTL     time.Duration `mapstructure:"TTL"`
-	LogPath string        `mapstructure:"LOG_PATH"`
+	App   App
+	Elk2  Elk2
+	Elk7  Elk7
+	Elk8  Elk8
+	Redis Redis
 }
 
 // LoadConfig initializes the application configuration from environment variables
 func LoadConfig() (*Config, error) {
 	viper.SetConfigName(".env") // Use .env for configuration
-	viper.SetConfigType("env")
+	viper.SetConfigType("yml")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
 		logger.Log.Warn("Error reading config file", zap.Error(err))
@@ -52,35 +67,6 @@ func LoadConfig() (*Config, error) {
 
 	// Set up Viper to read environment variables
 	viper.AutomaticEnv()
-	// Provide default values
-	viper.SetDefault("ELK_INDEX_FROM", "idx_from")
-	viper.SetDefault("ELK_INDEX_FROM", "idx_from")
-	viper.SetDefault("ELK_INDEX_TO", "idx_to")
-
-	viper.SetDefault("ELK2_URL", "http://127.0.0.1:9202")
-	viper.SetDefault("ELK2_USER", "elastic")
-	viper.SetDefault("ELK2_PASS", "changeme")
-
-	viper.SetDefault("ELK7_URL", "http://127.0.0.1:9207")
-	viper.SetDefault("ELK7_USER", "elastic")
-	viper.SetDefault("ELK7_PASS", "changeme")
-
-	viper.SetDefault("ELK8_URL", "http://127.0.0.1:9208")
-	viper.SetDefault("ELK8_USER", "elastic")
-	viper.SetDefault("ELK8_PASS", "changeme")
-
-	viper.SetDefault("BULK_SIZE", "1000")
-	viper.SetDefault("MAX_RETRIES", "60")
-	viper.SetDefault("SCROLL_TTL", "1m")
-
-	viper.SetDefault("REDIS_URL", "127.0.0.1:6379")
-	viper.SetDefault("REDIS_DB", 0)
-	viper.SetDefault("REDIS_PASSWORD", nil)
-	viper.SetDefault("REDIS_TTL", "1m")
-	viper.SetDefault("REDIS_KEY_SCROLL_ID", nil)
-
-	viper.SetDefault("TTL", "6s")
-	viper.SetDefault("LOG_PATH", "./logs/app.log")
 
 	// Define a Config struct to hold the configuration
 	var config Config
@@ -95,20 +81,21 @@ func LoadConfig() (*Config, error) {
 	configLogger, _ := zap.NewProduction() // Adjust logging based on your setup
 	defer configLogger.Sync()
 	configLogger.Info("Configuration loaded",
-		zap.String("ELK2 URL", config.Elk2Url),
-		zap.String("ELK7 URL", config.Elk7Url),
-		zap.String("ELK8 URL", config.Elk8Url),
-		zap.String("ELK INDEX FROM", config.ElkIndexFrom),
-		zap.String("ELK INDEX TO", config.ElkIndexTo),
-		zap.Int("BULK SIZE", config.BulkSize),
-		zap.Int("MAX BULK PAYLOAD BYTES", config.MaxBulkPayloadBytes),
-		zap.Int("MAX RETRIES", config.MaxRetries),
-		zap.String("SCROLL TIMEOUT", config.ScrollTTL),
-		zap.String("REDIS URL", config.RedisUrl),
-		zap.Duration("REDIS TTL", config.RedisTTL),
-		zap.String("REDIS KEY SCROLL ID", config.RedisKeyScrollID),
-		zap.Duration("TIMEOUT", config.TTL),
-		zap.String("LOG PATH", config.LogPath),
+		zap.String("ELK2 URL", config.Elk2.Url),
+		zap.String("ELK7 URL", config.Elk7.Url),
+		zap.String("ELK8 URL", config.Elk8.Url),
+		zap.String("ELK INDEX FROM", config.Elk2.Index),
+		zap.String("ELK INDEX TO", config.Elk8.Index),
+		zap.Int("BULK SIZE", config.App.BulkSize),
+		zap.Int("MAX BULK PAYLOAD BYTES", config.App.MaxBulkPayloadBytes),
+		zap.Int("MAX RETRIES", config.App.MaxRetries),
+		zap.Duration("SCROLL TIMEOUT", config.App.ScrollTTL),
+		zap.String("REDIS URL", config.Redis.Addr),
+		zap.Duration("REDIS TTL", config.Redis.TTL),
+		zap.String("REDIS KEY SCROLL ID", config.Redis.KeyScrollID),
+		zap.String("REDIS KEY TOTAL PROCESSED", config.Redis.KeyTotalProcessed),
+		zap.Duration("TIMEOUT", config.App.TTL),
+		zap.String("LOG PATH", config.App.LogPath),
 	)
 
 	return &config, nil
