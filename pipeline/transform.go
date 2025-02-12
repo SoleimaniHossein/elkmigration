@@ -16,7 +16,10 @@ func TransformDocuments(result <-chan *elastic.SearchResult, transformedDocs cha
 				logger.Warn("Error unmarshalling document", zap.Error(err))
 				continue
 			}
-			//fmt.Println(doc["id"])
+
+			if val, ok := doc["started_at"]; ok {
+				doc["@timestamp"] = val
+			}
 			transformedDocs <- doc
 		}
 	}

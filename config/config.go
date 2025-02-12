@@ -17,10 +17,12 @@ type App struct {
 	LogPath             string
 }
 type Elk2 struct {
-	Url   string
-	Index string
-	User  string
-	Pass  string
+	Url    string
+	Index  string
+	SortBy string
+	Asc    bool
+	User   string
+	Pass   string
 }
 
 type Elk7 struct {
@@ -85,12 +87,12 @@ func LoadConfig() (*Config, error) {
 		zap.String("ELK7 URL", config.Elk7.Url),
 		zap.String("ELK8 URL", config.Elk8.Url),
 		zap.String("ELK INDEX FROM", config.Elk2.Index),
-		zap.String("ELK INDEX TO", config.Elk8.Index),
+		zap.String("ELK INDEX TO", config.Elk7.Index),
 		zap.Int("BULK SIZE", config.App.BulkSize),
 		zap.Int("MAX BULK PAYLOAD BYTES", config.App.MaxBulkPayloadBytes),
 		zap.Int("MAX RETRIES", config.App.MaxRetries),
 		zap.Duration("SCROLL TIMEOUT", config.App.ScrollTTL),
-		zap.String("REDIS URL", config.Redis.Addr),
+		zap.String("REDIS ADDE", config.Redis.Addr),
 		zap.Duration("REDIS TTL", config.Redis.TTL),
 		zap.String("REDIS KEY SCROLL ID", config.Redis.KeyScrollID),
 		zap.String("REDIS KEY TOTAL PROCESSED", config.Redis.KeyTotalProcessed),

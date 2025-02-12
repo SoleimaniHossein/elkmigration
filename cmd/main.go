@@ -70,6 +70,12 @@ func main() {
 		return
 	}
 
+	//es7Client, err := clients.NewElasticsearchClient(7, cfg.Elk7.Url, cfg.Elk7.User, cfg.Elk7.Pass)
+	//if err != nil {
+	//	logger.Error("Error creating Elasticsearch 7.x client", zap.Error(err))
+	//	return
+	//}
+
 	es8Client, err := clients.NewElasticsearchClient(8, cfg.Elk8.Url, cfg.Elk8.User, cfg.Elk8.Pass)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 8.x client", zap.Error(err))
@@ -88,7 +94,7 @@ func main() {
 	}
 
 	for i := 0; i < transformWorkers; i++ {
-		wg.Add(1)
+		wg.Add(2)
 		go func(workerID int) {
 			defer wg.Done()
 			pipeline.TransformDocuments(docs, transformedDocs)
@@ -97,10 +103,10 @@ func main() {
 
 	ctxImport, _ := context.WithCancel(context.Background())
 	for i := 0; i < importWorkers; i++ {
-		wg.Add(1)
+		wg.Add(3)
 		go func(workerID int) {
 			defer wg.Done()
-			pipeline.ImportDocuments(ctxImport, cfg, es8Client, clients.RC, transformedDocs)
+			pipeline.ImportDocuments(ctxImport, cfg, es8Client, clients.RC, transformedDocs, &wg)
 		}(i)
 	}
 

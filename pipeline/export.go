@@ -31,7 +31,7 @@ func ExportDocuments(ctx context.Context, config *config.Config, client clients.
 	if scrollID == "" {
 		scrollService = es2Client.Scroll(config.Elk2.Index).
 			Size(config.App.BulkSize).
-			Query(elastic.NewMatchAllQuery()).Sort("id", true)
+			Query(elastic.NewMatchAllQuery()).Sort(config.Elk2.SortBy, config.Elk2.Asc)
 	} else {
 		scrollService = es2Client.Scroll(config.Elk2.Index).
 			ScrollId(scrollID)

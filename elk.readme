@@ -1,0 +1,42 @@
+curl -X GET "http://172.30.43.125:9200/_security/_authenticate" -u kngkafkausr:aTDRkbUWJUYTY
+
+curl -X GET "http://172.30.43.125:9200/_cat/indices?v" -u kngkafkausr:aTDRkbUWJUYTY% | grep logs-generic-kong-kafka-log-plugin
+
+
+
+
+curl -X GET "http://172.30.43.125:9200/logs-generic-kong-kafka-log-plugin/_search?pretty" -u kngkafkausr:aTDRkbUWJUYTY%
+
+
+curl -X PUT 'http://172.29.234.37:9200/_ilm/policy/index_elk7_policy?pretty' -H 'Content-Type: application/json' -d'
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "rollover": {
+            "max_age": "1d"
+          }
+        }
+      }
+    }
+  }
+}' -u elastic:tarantula -k
+
+  curl -X PUT "http://172.29.234.37:9200/_index_template/index_tmp_log_generic_elk7?pretty" -H 'Content-Type: application/json' -d'
+   {
+     "index_patterns": ["logs-generic-elk7"],
+     "priority": 101,
+     "data_stream": { },
+     "template": {
+        "settings": {
+         "number_of_shards": 3,
+      "number_of_replicas": 0,
+      "index.lifecycle.name": "log_generic_elk7"
+       }
+     }
+   }
+   ' -u elastic:tarantula -k
+
+curl -X PUT "http://172.29.234.37:9200/_data_stream/logs-generic-elk7" -u elastic:tarantula -k

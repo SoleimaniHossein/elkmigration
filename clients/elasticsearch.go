@@ -1,10 +1,13 @@
 package clients
 
 import (
+	"elkmigration/logger"
 	"errors"
 	es7 "github.com/elastic/go-elasticsearch/v7"
 	es8 "github.com/elastic/go-elasticsearch/v8"
+	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v3"
+	"io"
 )
 
 type ElasticsearchClient interface {
@@ -33,6 +36,19 @@ func (e *ES7Client) Ping() error {
 	defer res.Body.Close()
 	return nil
 }
+func (e *ES7Client) TestConnection() error {
+	res, err := e.Client.Info()
+	if err != nil {
+		logger.Fatal("Elasticsearch connection failed", zap.Error(err))
+		return err
+	}
+	defer res.Body.Close()
+
+	// Read the response
+	body, _ := io.ReadAll(res.Body)
+	logger.Info("Elasticsearch Info Response", zap.String("response", string(body)))
+	return nil
+}
 
 type ES8Client struct {
 	Client *es8.Client
@@ -44,6 +60,20 @@ func (e *ES8Client) Ping() error {
 		return err
 	}
 	defer res.Body.Close()
+	return nil
+}
+
+func (e *ES8Client) TestConnection() error {
+	res, err := e.Client.Info()
+	if err != nil {
+		logger.Fatal("Elasticsearch connection failed", zap.Error(err))
+		return err
+	}
+	defer res.Body.Close()
+
+	// Read the response
+	body, _ := io.ReadAll(res.Body)
+	logger.Info("Elasticsearch Info Response", zap.String("response", string(body)))
 	return nil
 }
 
