@@ -53,13 +53,13 @@ func main() {
 
 	// Get the number of available CPU cores
 	numCPU := runtime.NumCPU()
-	logger.Info("Available CPUs: %d\n", zap.Any("", numCPU))
+	logger.Info("Available CPUs:", zap.Any("CPUs", numCPU))
 
 	// Set the maximum number of CPUs to use
 	runtime.GOMAXPROCS(numCPU) // Or set to a specific number like 4, depending on the need
 
 	// Verify the number of CPUs Go is using
-	logger.Info("Go is using %d CPUs\n", zap.Any("", runtime.GOMAXPROCS(0)))
+	logger.Info("Go is using ", zap.Any("CPUs", runtime.GOMAXPROCS(0)))
 
 	logger.Info("Starting Elasticsearch migration...")
 
@@ -106,7 +106,7 @@ func main() {
 		wg.Add(3)
 		go func(workerID int) {
 			defer wg.Done()
-			pipeline.ImportDocuments(ctxImport, cfg, es8Client, clients.RC, transformedDocs, &wg)
+			pipeline.ImportDocuments(ctxImport, cfg, es8Client, clients.RC, transformedDocs)
 		}(i)
 	}
 

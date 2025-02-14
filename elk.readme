@@ -1,14 +1,14 @@
-curl -X GET "http://172.30.43.125:9200/_security/_authenticate" -u kngkafkausr:aTDRkbUWJUYTY
+curl -X GET "http://127.0.0.1:9208/_security/_authenticate" -u kngkafkausr:aTDRkbUWJUYTY
 
-curl -X GET "http://172.30.43.125:9200/_cat/indices?v" -u kngkafkausr:aTDRkbUWJUYTY% | grep logs-generic-kong-kafka-log-plugin
-
-
+curl -X GET "http://127.0.0.1:9208/_cat/indices?v" -u kngkafkausr:aTDRkbUWJUYTY% | grep logs-generic-kong-kafka-log-plugin
 
 
-curl -X GET "http://172.30.43.125:9200/logs-generic-kong-kafka-log-plugin/_search?pretty" -u kngkafkausr:aTDRkbUWJUYTY%
 
 
-curl -X PUT 'http://172.29.234.37:9200/_ilm/policy/index_elk7_policy?pretty' -H 'Content-Type: application/json' -d'
+curl -X GET "http://127.0.0.1:9208/logs-generic-kong-kafka-log-plugin/_search?pretty" -u kngkafkausr:aTDRkbUWJUYTY%
+
+
+curl -X PUT 'http://127.0.0.1:9208/_ilm/policy/index_elk7_policy?pretty' -H 'Content-Type: application/json' -d'
 {
   "policy": {
     "phases": {
@@ -24,7 +24,7 @@ curl -X PUT 'http://172.29.234.37:9200/_ilm/policy/index_elk7_policy?pretty' -H 
   }
 }' -u elastic:tarantula -k
 
-  curl -X PUT "http://172.29.234.37:9200/_index_template/index_tmp_log_generic_elk7?pretty" -H 'Content-Type: application/json' -d'
+  curl -X PUT "http://127.0.0.1:9208/_index_template/index_tmp_log_generic_elk7?pretty" -H 'Content-Type: application/json' -d'
    {
      "index_patterns": ["logs-generic-elk7"],
      "priority": 101,
@@ -39,4 +39,4 @@ curl -X PUT 'http://172.29.234.37:9200/_ilm/policy/index_elk7_policy?pretty' -H 
    }
    ' -u elastic:tarantula -k
 
-curl -X PUT "http://172.29.234.37:9200/_data_stream/logs-generic-elk7" -u elastic:tarantula -k
+curl -X PUT "http://127.0.0.1:9208/_data_stream/logs-generic-elk7" -u elastic:tarantula -k

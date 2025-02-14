@@ -13,9 +13,10 @@ import (
 )
 
 type FakeUser struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	ID        int       `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	TimeStamp time.Time `json:"started_at"`
 }
 
 func main() {
@@ -43,9 +44,10 @@ func main() {
 // GenerateFakeUsersDoc creates a single fake document.
 func generateFakeUsersDoc(counter int) FakeUser {
 	return FakeUser{
-		ID:    counter,
-		Name:  fmt.Sprintf("User%d", counter),
-		Email: fmt.Sprintf("email@user%d.com", counter),
+		ID:        counter,
+		Name:      fmt.Sprintf("User%d", counter),
+		Email:     fmt.Sprintf("email@user%d.com", counter),
+		TimeStamp: time.Now(),
 	}
 }
 
