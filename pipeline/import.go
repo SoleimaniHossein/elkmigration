@@ -333,6 +333,7 @@
 //
 //		return val
 //	}
+
 package pipeline
 
 import (
@@ -358,7 +359,7 @@ var errorCount int64 = 0 // Atomic counter for errors
 func ImportDocuments(ctx context.Context, config *config.Config, client clients.ElasticsearchClient, redisClient *clients.RedisClient, transformedDocs <-chan map[string]interface{}) {
 	redisClient.Ctx = ctx
 
-	esClient, ok := client.(*clients.ES8Client)
+	esClient, ok := client.(*clients.Es8Client)
 	if !ok {
 		logger.Fatal("Invalid client type; expected *ES8Client")
 	}
@@ -490,33 +491,14 @@ func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
 		return err
 	}
 
-	localErrorCount := 0
-	var failedDocs []string
-
 	if bulkResponse.Errors {
 		for _, item := range bulkResponse.Items {
 			for action, result := range item {
 				if errMsg, ok := result["error"].(map[string]interface{}); ok {
-					errorDetails := fmt.Sprintf("%s: %v", action, errMsg)
-					failedDocs = append(failedDocs, errorDetails)
-					localErrorCount++
+					logger.Error(fmt.Sprintf("%s: %v", action, errMsg))
 				}
-			}
-
-			if localErrorCount >= 3 {
-				atomic.AddInt64(&errorCount, int64(localErrorCount))
-				logger.Error("Too many failed documents", zap.Int("failed_count", localErrorCount), zap.Strings("errors", failedDocs))
-
-				if atomic.LoadInt64(&errorCount) >= 3 {
-					logger.Fatal("Bulk request failed 3 times. Exiting...")
-				}
-				return errors.New("bulk request failed: more than 3 documents were not inserted")
 			}
 		}
-	}
-
-	if localErrorCount > 0 {
-		logger.Warn("Bulk request completed with some failures", zap.Int("failed_count", localErrorCount), zap.Strings("errors", failedDocs))
 	}
 
 	logger.Info("Bulk request executed successfully")

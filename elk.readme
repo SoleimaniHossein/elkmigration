@@ -2,13 +2,10 @@ curl -X GET "http://127.0.0.1:9208/_security/_authenticate" -u kngkafkausr:aTDRk
 
 curl -X GET "http://127.0.0.1:9208/_cat/indices?v" -u kngkafkausr:aTDRkbUWJUYTY% | grep logs-generic-kong-kafka-log-plugin
 
-
-
-
 curl -X GET "http://127.0.0.1:9208/logs-generic-kong-kafka-log-plugin/_search?pretty" -u kngkafkausr:aTDRkbUWJUYTY%
 
 
-curl -X PUT 'http://127.0.0.1:9208/_ilm/policy/index_elk7_policy?pretty' -H 'Content-Type: application/json' -d'
+curl -X PUT 'http://127.0.0.1:9208/_ilm/policy/oxygen-stream-ploicy?pretty' -H 'Content-Type: application/json' -d'
 {
   "policy": {
     "phases": {
@@ -24,19 +21,18 @@ curl -X PUT 'http://127.0.0.1:9208/_ilm/policy/index_elk7_policy?pretty' -H 'Con
   }
 }' -u elastic:tarantula -k
 
-  curl -X PUT "http://127.0.0.1:9208/_index_template/index_tmp_log_generic_elk7?pretty" -H 'Content-Type: application/json' -d'
+  curl -X PUT "http://127.0.0.1:9208/_index_template/oxygen-stream-template?pretty" -H 'Content-Type: application/json' -d'
    {
-     "index_patterns": ["logs-generic-elk7"],
+     "index_patterns": ["oxygen-stream"],
      "priority": 101,
      "data_stream": { },
      "template": {
         "settings": {
          "number_of_shards": 3,
       "number_of_replicas": 0,
-      "index.lifecycle.name": "log_generic_elk7"
+      "index.lifecycle.name": "oxygen-stream"
        }
      }
-   }
-   ' -u elastic:tarantula -k
+   }' -u elastic:tarantula -k
 
-curl -X PUT "http://127.0.0.1:9208/_data_stream/logs-generic-elk7" -u elastic:tarantula -k
+curl -X PUT "http://127.0.0.1:9208/_data_stream/oxygen-stream" -u elastic:tarantula -k

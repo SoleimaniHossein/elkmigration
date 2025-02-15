@@ -1,80 +1,14 @@
 package clients
 
 import (
-	"elkmigration/logger"
 	"errors"
 	es7 "github.com/elastic/go-elasticsearch/v7"
 	es8 "github.com/elastic/go-elasticsearch/v8"
-	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v3"
-	"io"
 )
 
 type ElasticsearchClient interface {
 	Ping() error
-}
-
-type ES2Client struct {
-	Client *elastic.Client
-	URL    string
-}
-
-func (e *ES2Client) Ping() error {
-	_, _, err := e.Client.Ping(e.URL).Do()
-	return err
-}
-
-type ES7Client struct {
-	Client *es7.Client
-}
-
-func (e *ES7Client) Ping() error {
-	res, err := e.Client.Ping()
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	return nil
-}
-func (e *ES7Client) TestConnection() error {
-	res, err := e.Client.Info()
-	if err != nil {
-		logger.Fatal("Elasticsearch connection failed", zap.Error(err))
-		return err
-	}
-	defer res.Body.Close()
-
-	// Read the response
-	body, _ := io.ReadAll(res.Body)
-	logger.Info("Elasticsearch Info Response", zap.String("response", string(body)))
-	return nil
-}
-
-type ES8Client struct {
-	Client *es8.Client
-}
-
-func (e *ES8Client) Ping() error {
-	res, err := e.Client.Ping()
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	return nil
-}
-
-func (e *ES8Client) TestConnection() error {
-	res, err := e.Client.Info()
-	if err != nil {
-		logger.Fatal("Elasticsearch connection failed", zap.Error(err))
-		return err
-	}
-	defer res.Body.Close()
-
-	// Read the response
-	body, _ := io.ReadAll(res.Body)
-	logger.Info("Elasticsearch Info Response", zap.String("response", string(body)))
-	return nil
 }
 
 func NewElasticsearchClient(version int, url, username, password string) (ElasticsearchClient, error) {
@@ -84,7 +18,7 @@ func NewElasticsearchClient(version int, url, username, password string) (Elasti
 		if err != nil {
 			return nil, err
 		}
-		return &ES2Client{Client: client, URL: url}, nil
+		return &Es2Client{Client: client, URL: url}, nil
 	case 7:
 		client, err := es7.NewClient(es7.Config{
 			Addresses: []string{url},
@@ -94,7 +28,7 @@ func NewElasticsearchClient(version int, url, username, password string) (Elasti
 		if err != nil {
 			return nil, err
 		}
-		return &ES7Client{Client: client}, nil
+		return &Es7Client{Client: client}, nil
 	case 8:
 		client, err := es8.NewClient(es8.Config{
 			Addresses: []string{url},
@@ -104,7 +38,7 @@ func NewElasticsearchClient(version int, url, username, password string) (Elasti
 		if err != nil {
 			return nil, err
 		}
-		return &ES8Client{Client: client}, nil
+		return &Es8Client{Client: client}, nil
 	default:
 		return nil, errors.New("unsupported Elasticsearch version")
 	}

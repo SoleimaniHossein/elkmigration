@@ -17,7 +17,7 @@ import (
 func ExportDocuments(ctx context.Context, config *config.Config, client clients.ElasticsearchClient, docs chan<- *elastic.SearchResult, redis *clients.RedisClient) {
 	defer close(docs)
 
-	es2Client := client.(*clients.ES2Client).Client
+	es2Client := client.(*clients.Es2Client).Client
 
 	scrollID, err := redis.Get(config.Redis.KeyScrollID)
 
