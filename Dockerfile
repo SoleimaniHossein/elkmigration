@@ -1,6 +1,7 @@
 ARG GO_VERSION=1.23.3
 
 FROM golang:${GO_VERSION}-alpine AS builder
+
 ENV EXPOSE=8080
 
 # Install build dependencies
@@ -21,7 +22,9 @@ RUN go mod download
 COPY . .
 
 # The -ldflags "-s -w" flags to disable the symbol table and DWARF generation that is supposed to create debugging data
-RUN go build -ldflags "-s -w" -v -o elkmigration ./cmd/main.go
+RUN #go build -ldflags "-s -w" -v -o elkmigration ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -v -o elkmigration ./cmd/main.go
+
 RUN upx -9 /app/elkmigration
 
 
@@ -33,6 +36,10 @@ WORKDIR /
 
 # Copy the built binary from the builder container
 COPY --from=builder /app/elkmigration /elkmigration
+COPY --from=builder /app/.env.yaml /.env.yaml
+COPY --from=builder /app/app.log /app.log
+
+RUN chmod +x /elkmigration
 
 # Expose necessary ports
 EXPOSE $EXPOSE
