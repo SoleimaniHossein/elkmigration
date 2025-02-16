@@ -36,8 +36,6 @@ WORKDIR /
 
 # Copy the built binary from the builder container
 COPY --from=builder /app/elkmigration /elkmigration
-COPY --from=builder /app/.env.yaml /.env.yaml
-COPY --from=builder /app/app.log /app.log
 
 RUN chmod +x /elkmigration
 
