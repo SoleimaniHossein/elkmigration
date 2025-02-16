@@ -2,8 +2,6 @@ ARG GO_VERSION=1.23.3
 
 FROM golang:${GO_VERSION}-alpine AS builder
 
-ENV EXPOSE=8080
-
 # Install build dependencies
 RUN apk add --no-cache gcc musl-dev
 
@@ -38,9 +36,6 @@ WORKDIR /
 COPY --from=builder /app/elkmigration /elkmigration
 
 RUN chmod +x /elkmigration
-
-# Expose necessary ports
-EXPOSE $EXPOSE
 
 # Set the entrypoint to run the app
 ENTRYPOINT ["/elkmigration"]

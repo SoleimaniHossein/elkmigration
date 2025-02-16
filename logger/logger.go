@@ -57,7 +57,7 @@ func InitLogger(logFilePath string) {
 
 	// Console logging core
 	consoleCore := zapcore.NewCore(
-		zapcore.NewJSONEncoder(consoleEncoderConfig),
+		zapcore.NewJSONEncoder(fileEncoderConfig),
 		zapcore.Lock(os.Stdout),
 		zapcore.DebugLevel,
 	)

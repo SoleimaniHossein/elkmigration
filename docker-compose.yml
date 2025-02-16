@@ -9,6 +9,7 @@ volumes:
 
 services:
   app:
+#    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.1
     build:
       context: .
       dockerfile: Dockerfile
@@ -20,8 +21,6 @@ services:
       - .env.yaml
     networks:
       - elk-net
-    ports:
-      - "8080:8080"
     volumes:
       - ./logs/app.log:/logs/app.log
       - ./.env.yaml:/.env.yaml

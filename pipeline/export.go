@@ -9,7 +9,6 @@ import (
 	"errors"
 	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v3"
-	"log"
 )
 
 // ExportDocuments exports documents from Elasticsearch 2.x, with state-saving to Redis.
@@ -25,7 +24,7 @@ func ExportDocuments(ctx context.Context, config *config.Config, client clients.
 		logger.Warn("failed to get offset from Redis: %w", zap.Error(err))
 	}
 
-	logger.Info("Starting from scrollID: %d\n", zap.String("scrollID", scrollID))
+	logger.Info("Starting from scrollID: ", zap.String("scrollID", scrollID))
 
 	var scrollService *elastic.ScrollService
 	if scrollID == "" {
@@ -43,7 +42,7 @@ func ExportDocuments(ctx context.Context, config *config.Config, client clients.
 		})
 
 		if errors.Is(err, elastic.EOS) {
-			log.Println("No more documents to export.", err)
+			logger.Info("No more documents to export.", zap.Error(err))
 			return
 		}
 
