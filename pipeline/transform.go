@@ -22,6 +22,8 @@ func TransformDocuments(result <-chan *elastic.SearchResult, transformedDocs cha
 					doc["@timestamp"] = val
 				} else if dtVal, ok := doc["datetime"]; ok {
 					doc["@timestamp"] = dtVal
+				} else {
+					doc["@timestamp"] = 0
 				}
 			}
 
