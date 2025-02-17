@@ -25,9 +25,9 @@ services:
       - APP_MAX_RETRIES=6
 
       - ELK2_URLS=http://172.29.234.37:9201
-      - ELK2_INDEX="oxygen"
-      - ELK2_SORT_BY="started_at"
-      - ELK2_ASC="true"
+      - ELK2_INDEX=oxygen
+      - ELK2_SORT_BY=started_at
+      - ELK2_ASC=true
       - ELK2_USER=
       - ELK2_PASS=
 

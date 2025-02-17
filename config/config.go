@@ -61,15 +61,55 @@ type Config struct {
 
 // LoadConfig initializes the application configuration from environment variables
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName(".env.yaml") // Use .env for configuration
+	viper.SetConfigName(".env.yml") // Use .env for configuration
 	viper.SetConfigType("yml")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
 		logger.Error("Error reading config file", zap.Error(err))
 	}
 
-	// Set up Viper to read environment variables
-	viper.AutomaticEnv()
+	//// Load the correct .env file dynamically
+	//envFile := ".env"
+	//if err := godotenv.Load(envFile); err != nil {
+	//	log.Printf("Warning: No %s file found, using system environment variables", envFile)
+	//}
+
+	// Configure Viper for environment variables
+	//viper.SetEnvPrefix("APP")                              // Prefix all environment variables with APP_
+	//viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // Convert app.bulk_size → APP_BULK_SIZE
+	viper.AutomaticEnv() // Read OS environment variables
+
+	viper.BindEnv("App.BulkSize", "APP_BULK_SIZE")
+	viper.BindEnv("App.MaxBulkPayloadBytes", "APP_MAX_BULK_PAYLOAD_BYTES")
+	viper.BindEnv("App.ScrollTTL", "APP_SCROLL_TTL")
+	viper.BindEnv("App.TTL", "TTL")
+	viper.BindEnv("App.MaxRetries", "APP_MAX_RETRIES")
+
+	viper.BindEnv("Elk2.Urls", "ELK2_URLS")
+	viper.BindEnv("Elk2.Index", "ELK2_INDEX")
+	viper.BindEnv("Elk2.SortBy", "ELK2_SORT_BY")
+	viper.BindEnv("Elk2.Asc", "ELK2_ASC")
+	viper.BindEnv("Elk2.User", "ELK2_USER")
+	viper.BindEnv("Elk2.Pass", "ELK2_PASS")
+
+	viper.BindEnv("Elk7.Urls", "ELK7_URLS")
+	viper.BindEnv("Elk7.Index", "ELK7_INDEX")
+	viper.BindEnv("Elk7.User", "ELK7_USER")
+	viper.BindEnv("Elk7.Pass", "ELK7_PASS")
+
+	viper.BindEnv("Elk8.Urls", "ELK8_URLS")
+	viper.BindEnv("Elk8.Index", "ELK8_INDEX")
+	viper.BindEnv("Elk8.User", "ELK8_USER")
+	viper.BindEnv("Elk8.Pass", "ELK8_PASS")
+
+	viper.BindEnv("Redis.Host", "REDIS_HOST")
+	viper.BindEnv("Redis.Port", "REDIS_PORT")
+	viper.BindEnv("Redis.DB", "REDIS_DB")
+	viper.BindEnv("Redis.KeyScrollID", "REDIS_KEYSCROLLID")
+	viper.BindEnv("Redis.TTL", "REDIS_TTL")
+	viper.BindEnv("Redis.MaxRetries", "REDIS_MAX_RETRIES")
+	viper.BindEnv("Redis.KeyTotalProcessed", "REDIS_KEYTPROCESSED")
+	viper.BindEnv("Redis.TTL", "REDIS_TTL")
 
 	// Define a Config struct to hold the configuration
 	var config Config
