@@ -31,42 +31,40 @@ func colorizeLevel(level zapcore.Level) string {
 }
 
 // InitLogger initializes a Zap logger with both console and file output
-func InitLogger(logFilePath string) {
+func InitLogger() {
 	// Customize the encoder config for the console
 	consoleEncoderConfig := zap.NewProductionEncoderConfig()
 	consoleEncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder // Format timestamps
-	consoleEncoderConfig.EncodeLevel = zapcore.LevelEncoder(func(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
-		enc.AppendString(colorizeLevel(level))
-	})
+	consoleEncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 
 	// Encoder config for the file (no color)
-	fileEncoderConfig := zap.NewProductionEncoderConfig()
-	fileEncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	fileEncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-
-	// File logging core
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic("Failed to open log file: " + err.Error())
-	}
-	fileCore := zapcore.NewCore(
-		zapcore.NewJSONEncoder(fileEncoderConfig), // JSON format for the file
-		zapcore.AddSync(logFile),
-		zapcore.DebugLevel, // Minimum log level
-	)
+	//fileEncoderConfig := zap.NewProductionEncoderConfig()
+	//fileEncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	//fileEncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	//
+	//// File logging core
+	//logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//if err != nil {
+	//	panic("Failed to open log file: " + err.Error())
+	//}
+	//fileCore := zapcore.NewCore(
+	//	zapcore.NewConsoleEncoder(fileEncoderConfig), // JSON format for the file
+	//	zapcore.AddSync(logFile),
+	//	zapcore.DebugLevel, // Minimum log level
+	//)
 
 	// Console logging core
 	consoleCore := zapcore.NewCore(
-		zapcore.NewJSONEncoder(fileEncoderConfig),
+		zapcore.NewJSONEncoder(consoleEncoderConfig),
 		zapcore.Lock(os.Stdout),
 		zapcore.DebugLevel,
 	)
 
 	// Combine cores (console + file)
-	core := zapcore.NewTee(consoleCore, fileCore)
+	//core := zapcore.NewTee(consoleCore)
 
 	// Initialize logger with combined core
-	Log = zap.New(core, zap.AddCaller())
+	Log = zap.New(consoleCore, zap.AddCaller())
 }
 
 // Info logs an informational message

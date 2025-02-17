@@ -2,6 +2,7 @@ package config
 
 import (
 	"elkmigration/logger"
+	"fmt"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"log"
@@ -14,10 +15,10 @@ type App struct {
 	ScrollTTL           time.Duration
 	TTL                 time.Duration
 	MaxRetries          int
-	LogPath             string
 }
+
 type Elk2 struct {
-	Url    string
+	Urls   []string
 	Index  string
 	SortBy string
 	Asc    bool
@@ -26,23 +27,24 @@ type Elk2 struct {
 }
 
 type Elk7 struct {
-	Url   string
+	Urls  []string
 	Index string
 	User  string
 	Pass  string
 }
 
 type Elk8 struct {
-	Url   string
+	Urls  []string
 	Index string
 	User  string
 	Pass  string
 }
 
 type Redis struct {
-	Addr              string
-	DB                int
+	Host              string
+	Port              int
 	Pass              string
+	DB                int
 	KeyScrollID       string
 	KeyTotalProcessed string
 	TTL               time.Duration
@@ -59,12 +61,11 @@ type Config struct {
 
 // LoadConfig initializes the application configuration from environment variables
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName(".env") // Use .env for configuration
+	viper.SetConfigName(".env.yaml") // Use .env for configuration
 	viper.SetConfigType("yml")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
-		logger.Log.Warn("Error reading config file", zap.Error(err))
-		logger.Log.Info("Environment variable not set, using default")
+		logger.Error("Error reading config file", zap.Error(err))
 	}
 
 	// Set up Viper to read environment variables
@@ -83,21 +84,20 @@ func LoadConfig() (*Config, error) {
 	configLogger, _ := zap.NewProduction() // Adjust logging based on your setup
 	defer configLogger.Sync()
 	configLogger.Info("Configuration loaded",
-		zap.String("ELK2 URL", config.Elk2.Url),
-		zap.String("ELK7 URL", config.Elk7.Url),
-		zap.String("ELK8 URL", config.Elk8.Url),
+		zap.Strings("ELK2 URLs", config.Elk2.Urls),
+		zap.Strings("ELK7 URLs", config.Elk7.Urls),
+		zap.Strings("ELK8 URLs", config.Elk8.Urls),
 		zap.String("ELK INDEX FROM", config.Elk2.Index),
 		zap.String("ELK INDEX TO", config.Elk7.Index),
 		zap.Int("BULK SIZE", config.App.BulkSize),
 		zap.Int("MAX BULK PAYLOAD BYTES", config.App.MaxBulkPayloadBytes),
 		zap.Int("MAX RETRIES", config.App.MaxRetries),
 		zap.Duration("SCROLL TIMEOUT", config.App.ScrollTTL),
-		zap.String("REDIS ADDE", config.Redis.Addr),
+		zap.String("REDIS ADDR", fmt.Sprintf("%s:%d", config.Redis.Host, config.Redis.Port)),
 		zap.Duration("REDIS TTL", config.Redis.TTL),
 		zap.String("REDIS KEY SCROLL ID", config.Redis.KeyScrollID),
 		zap.String("REDIS KEY TOTAL PROCESSED", config.Redis.KeyTotalProcessed),
 		zap.Duration("TIMEOUT", config.App.TTL),
-		zap.String("LOG PATH", config.App.LogPath),
 	)
 
 	return &config, nil

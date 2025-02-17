@@ -22,7 +22,7 @@ import (
 const (
 	exportWorkers    = 1
 	transformWorkers = 1
-	importWorkers    = 1
+	importWorkers    = 3
 )
 
 func main() {
@@ -45,7 +45,7 @@ func main() {
 		logger.Error("Config Loading err, Set Default Values... ", zap.Error(err))
 	}
 
-	logger.InitLogger(cfg.App.LogPath)
+	logger.InitLogger()
 	defer logger.Log.Sync()
 
 	clients.InitRedis(ctx, &mu, cfg.Redis)
@@ -64,13 +64,13 @@ func main() {
 	logger.Info("Starting Elasticsearch migration...")
 
 	// Initialize Elasticsearch clients
-	es2Client, err := clients.NewElasticsearchClient(2, cfg.Elk2.Url, cfg.Elk2.User, cfg.Elk2.Pass)
+	es2Client, err := clients.NewElasticsearchClient(2, cfg.Elk2.Urls, cfg.Elk2.User, cfg.Elk2.Pass)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 2.x client", zap.Error(err))
 		return
 	}
 
-	es8Client, err := clients.NewElasticsearchClient(8, cfg.Elk8.Url, cfg.Elk8.User, cfg.Elk8.Pass)
+	es8Client, err := clients.NewElasticsearchClient(8, cfg.Elk8.Urls, cfg.Elk8.User, cfg.Elk8.Pass)
 	if err != nil {
 		logger.Error("Error creating Elasticsearch 8.x client", zap.Error(err))
 		return
@@ -112,5 +112,5 @@ func main() {
 	}()
 
 	wg.Wait()
-	
+
 }

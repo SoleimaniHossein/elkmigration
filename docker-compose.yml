@@ -17,13 +17,34 @@ services:
       - redis
       - elk2
       - elk8
-    env_file:
-      - .env.yaml
+    environment:
+      - APP_BULK_SIZE=10000
+      - APP_MAX_BULK_PAYLOAD_BYTES=104857600
+      - APP_SCROLL_TTL=20m
+      - APP_TTL=10s
+      - APP_MAX_RETRIES=6
+
+      - ELK2_URLS=http://172.29.234.37:9201
+      - ELK2_INDEX="oxygen"
+      - ELK2_SORT_BY="started_at"
+      - ELK2_ASC="true"
+      - ELK2_USER=
+      - ELK2_PASS=
+
+      - ELK8_URLS=http://172.30.43.125:9200,http://172.30.43.126:9200,http://172.30.43.127:9200
+      - ELK8_INDEX=logs-generic-kong-kafka-log-plugin
+      - ELK8_USER=kngkafkausr
+      - ELK8_PASS=aTDRkbUWJUYTY%
+
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASS=
+      - REDIS_DB=0
+      - REDIS_KEY_SCROLL_ID=scrollID
+      - REDIS_KEY_TOTAL_PROCESSED=totalProcessed
+      - REDIS_TTL=20m
     networks:
       - elk-net
-    volumes:
-      - ./logs/app.log:/logs/app.log
-      - ./.env.yaml:/.env.yaml
 
   redis:
     image: redis:7.0

@@ -11,17 +11,17 @@ type ElasticsearchClient interface {
 	Ping() error
 }
 
-func NewElasticsearchClient(version int, url, username, password string) (ElasticsearchClient, error) {
+func NewElasticsearchClient(version int, urls []string, username, password string) (ElasticsearchClient, error) {
 	switch version {
 	case 2:
-		client, err := elastic.NewClient(elastic.SetURL(url), elastic.SetSniff(false), elastic.SetBasicAuth(username, password))
+		client, err := elastic.NewClient(elastic.SetURL(urls...), elastic.SetSniff(false), elastic.SetBasicAuth(username, password))
 		if err != nil {
 			return nil, err
 		}
-		return &Es2Client{Client: client, URL: url}, nil
+		return &Es2Client{Client: client, URLs: urls}, nil
 	case 7:
 		client, err := es7.NewClient(es7.Config{
-			Addresses: []string{url},
+			Addresses: urls,
 			Username:  username,
 			Password:  password,
 		})
@@ -31,7 +31,7 @@ func NewElasticsearchClient(version int, url, username, password string) (Elasti
 		return &Es7Client{Client: client}, nil
 	case 8:
 		client, err := es8.NewClient(es8.Config{
-			Addresses: []string{url},
+			Addresses: urls,
 			Username:  username,
 			Password:  password,
 		})

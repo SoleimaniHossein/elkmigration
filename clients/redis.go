@@ -31,7 +31,7 @@ func NewRedisClient(ctx context.Context, mu *sync.Mutex, client *redis.Client) *
 func InitRedis(ctx context.Context, mu *sync.Mutex, config config.Redis) {
 	RC = NewRedisClient(ctx, mu,
 		redis.NewClient(&redis.Options{
-			Addr:     config.Addr,
+			Addr:     fmt.Sprintf("%s:%d", config.Host, config.Port),
 			Password: config.Pass,
 			DB:       config.DB,
 		}))
