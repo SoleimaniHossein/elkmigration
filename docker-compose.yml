@@ -9,10 +9,10 @@ volumes:
 
 services:
   app:
-#    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.1
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.2
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
     depends_on:
       - redis
       - elk2
@@ -21,7 +21,7 @@ services:
       - APP_BULK_SIZE=10000
       - APP_MAX_BULK_PAYLOAD_BYTES=104857600
       - APP_SCROLL_TTL=20m
-      - APP_TTL=10s
+      - APP_TTL=60s
       - APP_MAX_RETRIES=6
 
       - ELK2_URLS=http://172.29.234.37:9201
@@ -38,6 +38,7 @@ services:
 
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_USER=
       - REDIS_PASS=
       - REDIS_DB=0
       - REDIS_KEY_SCROLL_ID=scrollID

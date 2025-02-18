@@ -42,6 +42,7 @@ type Elk8 struct {
 type Redis struct {
 	Host              string
 	Port              int
+	User              string
 	Pass              string
 	DB                int
 	KeyScrollID       string
@@ -107,6 +108,8 @@ func LoadConfig() (*Config, error) {
 
 	viper.BindEnv("Redis.Host", "REDIS_HOST")
 	viper.BindEnv("Redis.Port", "REDIS_PORT")
+	viper.BindEnv("Redis.User", "REDIS_USER")
+	viper.BindEnv("Redis.Pass", "REDIS_PASS")
 	viper.BindEnv("Redis.DB", "REDIS_DB")
 	viper.BindEnv("Redis.KeyScrollID", "REDIS_KEY_SCROLL_ID")
 	viper.BindEnv("Redis.MaxRetries", "REDIS_MAX_RETRIES")
