@@ -1,7 +1,6 @@
 package config
 
 import (
-	"elkmigration/logger"
 	"fmt"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -61,28 +60,32 @@ type Config struct {
 
 // LoadConfig initializes the application configuration from environment variables
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName(".env.yml") // Use .env for configuration
+	// Set up Viper to read from config file
+	viper.SetConfigFile(".env.yml")
 	viper.SetConfigType("yml")
 	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		logger.Error("Error reading config file", zap.Error(err))
+
+	// Read from .env.yaml if it exists
+	if err := viper.ReadInConfig(); err == nil {
+		log.Println("Loaded configuration from .env.yaml")
+	} else {
+		log.Println("No .env.yaml file found, using only environment variables")
 	}
 
-	//// Load the correct .env file dynamically
-	//envFile := ".env"
-	//if err := godotenv.Load(envFile); err != nil {
-	//	log.Printf("Warning: No %s file found, using system environment variables", envFile)
-	//}
+	// Set up Viper to read from environment variables (and override values from the file)
+	viper.AutomaticEnv() // This ensures OS env variables take precedence over config file
 
-	// Configure Viper for environment variables
-	//viper.SetEnvPrefix("APP")                              // Prefix all environment variables with APP_
-	//viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // Convert app.bulk_size → APP_BULK_SIZE
-	viper.AutomaticEnv() // Read OS environment variables
+	// Set multiple prefixes
+	prefixes := []string{"APP", "ELK2", "ELK7", "ELK8", "REDIS"}
+	for _, prefix := range prefixes {
+		viper.SetEnvPrefix(prefix) // Apply the prefix for env vars
+		viper.AllowEmptyEnv(true)  // Allow unset environment variables
+	}
 
 	viper.BindEnv("App.BulkSize", "APP_BULK_SIZE")
 	viper.BindEnv("App.MaxBulkPayloadBytes", "APP_MAX_BULK_PAYLOAD_BYTES")
 	viper.BindEnv("App.ScrollTTL", "APP_SCROLL_TTL")
-	viper.BindEnv("App.TTL", "TTL")
+	viper.BindEnv("App.TTL", "APP_TTL")
 	viper.BindEnv("App.MaxRetries", "APP_MAX_RETRIES")
 
 	viper.BindEnv("Elk2.Urls", "ELK2_URLS")
@@ -105,10 +108,9 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("Redis.Host", "REDIS_HOST")
 	viper.BindEnv("Redis.Port", "REDIS_PORT")
 	viper.BindEnv("Redis.DB", "REDIS_DB")
-	viper.BindEnv("Redis.KeyScrollID", "REDIS_KEYSCROLLID")
-	viper.BindEnv("Redis.TTL", "REDIS_TTL")
+	viper.BindEnv("Redis.KeyScrollID", "REDIS_KEY_SCROLL_ID")
 	viper.BindEnv("Redis.MaxRetries", "REDIS_MAX_RETRIES")
-	viper.BindEnv("Redis.KeyTotalProcessed", "REDIS_KEYTPROCESSED")
+	viper.BindEnv("Redis.KeyTotalProcessed", "REDIS_KEY_TOTAL_PROCESSED")
 	viper.BindEnv("Redis.TTL", "REDIS_TTL")
 
 	// Define a Config struct to hold the configuration
@@ -125,10 +127,9 @@ func LoadConfig() (*Config, error) {
 	defer configLogger.Sync()
 	configLogger.Info("Configuration loaded",
 		zap.Strings("ELK2 URLs", config.Elk2.Urls),
-		zap.Strings("ELK7 URLs", config.Elk7.Urls),
 		zap.Strings("ELK8 URLs", config.Elk8.Urls),
 		zap.String("ELK INDEX FROM", config.Elk2.Index),
-		zap.String("ELK INDEX TO", config.Elk7.Index),
+		zap.String("ELK INDEX TO", config.Elk8.Index),
 		zap.Int("BULK SIZE", config.App.BulkSize),
 		zap.Int("MAX BULK PAYLOAD BYTES", config.App.MaxBulkPayloadBytes),
 		zap.Int("MAX RETRIES", config.App.MaxRetries),
@@ -137,7 +138,7 @@ func LoadConfig() (*Config, error) {
 		zap.Duration("REDIS TTL", config.Redis.TTL),
 		zap.String("REDIS KEY SCROLL ID", config.Redis.KeyScrollID),
 		zap.String("REDIS KEY TOTAL PROCESSED", config.Redis.KeyTotalProcessed),
-		zap.Duration("TIMEOUT", config.App.TTL),
+		zap.Duration("APP TIMEOUT", config.App.TTL),
 	)
 
 	return &config, nil

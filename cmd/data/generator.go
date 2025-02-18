@@ -33,7 +33,7 @@ func main() {
 		logger.Error("Config Loading err, Set Default Values... ", zap.Error(err))
 	}
 
-	logger.InitLogger(cfg.App.LogPath)
+	logger.InitLogger()
 	defer logger.Log.Sync()
 
 	generate(cfg, 1_000_000)
@@ -54,7 +54,7 @@ func generateFakeUsersDoc(counter int) FakeUser {
 // Generate populates Elasticsearch with fake documents.
 func generate(config *config.Config, numRecords int) {
 	docType := "document"
-	bulkURL := fmt.Sprintf("%s/%s/%s/_bulk", config.Elk2.Url, config.Elk2.Index, docType)
+	bulkURL := fmt.Sprintf("%s/%s/%s/_bulk", config.Elk2.Urls, config.Elk2.Index, docType)
 
 	client := &http.Client{Timeout: config.App.TTL}
 	var bulkBuffer bytes.Buffer

@@ -22,7 +22,7 @@ import (
 const (
 	exportWorkers    = 1
 	transformWorkers = 1
-	importWorkers    = 3
+	importWorkers    = 1
 )
 
 func main() {
