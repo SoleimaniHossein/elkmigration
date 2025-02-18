@@ -9,10 +9,10 @@ volumes:
 
 services:
   app:
-    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.2
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
+#    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.3
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       - redis
       - elk2
@@ -36,10 +36,10 @@ services:
       - ELK8_USER=kngkafkausr
       - ELK8_PASS=aTDRkbUWJUYTY%
 
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_HOST=192.168.33.147
+      - REDIS_PORT=6380
       - REDIS_USER=
-      - REDIS_PASS=
+      - REDIS_PASS=w5NtDpsBke
       - REDIS_DB=0
       - REDIS_KEY_SCROLL_ID=scrollID
       - REDIS_KEY_TOTAL_PROCESSED=totalProcessed
