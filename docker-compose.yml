@@ -36,8 +36,8 @@ services:
       - ELK8_USER=kngkafkausr
       - ELK8_PASS=aTDRkbUWJUYTY%
 
-      - REDIS_HOST=192.168.33.147
-      - REDIS_PORT=6380
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - REDIS_USER=
       - REDIS_PASS=w5NtDpsBke
       - REDIS_DB=0
