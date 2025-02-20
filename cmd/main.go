@@ -7,15 +7,17 @@ import (
 	"elkmigration/logger"
 	"elkmigration/pipeline"
 	"fmt"
+	"github.com/iyashjayesh/monigo"
+	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v3"
+	"log"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
 	"sync"
 	"syscall"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 // Configuration for worker counts and buffer sizes
@@ -26,6 +28,16 @@ const (
 )
 
 func main() {
+
+	monigoInstance := &monigo.Monigo{
+		ServiceName:   "elkmigration", // Mandatory field
+		DashboardPort: 8080,           // Default is 8080
+	}
+
+	go monigoInstance.Start() // Starting monigo dashboard
+	go monigoInstance.GetGoRoutinesStats()
+	log.Println("Monigo dashboard started at port 8080")
+
 	start := time.Now()
 
 	defer func() {

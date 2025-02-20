@@ -29,11 +29,13 @@ func ExportDocuments(ctx context.Context, config *config.Config, client clients.
 		logger.Info("Starting from the beginning...")
 		scrollService = es2Client.Scroll(config.Elk2.Index).
 			Size(config.App.BulkSize).
-			Query(elastic.NewMatchAllQuery()).Sort(config.Elk2.SortBy, config.Elk2.Asc)
+			Query(elastic.NewMatchAllQuery()).
+			Sort(config.Elk2.SortBy, config.Elk2.Asc)
 	} else {
 		logger.Info("Starting from: ", zap.String("scrollID", scrollID))
 		scrollService = es2Client.Scroll(config.Elk2.Index).
 			ScrollId(scrollID)
+		//ScrollId(scrollID).Sort(config.Elk2.SortBy,config.Elk2.Asc)
 	}
 
 	for {
