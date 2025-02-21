@@ -11,18 +11,20 @@ import (
 type App struct {
 	BulkSize            int
 	MaxBulkPayloadBytes int
-	ScrollTTL           time.Duration
+	ScrollTTL           string
 	TTL                 time.Duration
 	MaxRetries          int
+	SortBy              string
+	Asc                 bool
+	StartDate           int64
+	EndDate             int64
 }
 
 type Elk2 struct {
-	Urls   []string
-	Index  string
-	SortBy string
-	Asc    bool
-	User   string
-	Pass   string
+	Urls  []string
+	Index string
+	User  string
+	Pass  string
 }
 
 type Elk7 struct {
@@ -62,15 +64,15 @@ type Config struct {
 // LoadConfig initializes the application configuration from environment variables
 func LoadConfig() (*Config, error) {
 	// Set up Viper to read from config file
-	viper.SetConfigFile(".env.yml")
-	viper.SetConfigType("yml")
+	viper.SetConfigFile("env.yaml")
+	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 
 	// Read from .env.yaml if it exists
 	if err := viper.ReadInConfig(); err == nil {
-		log.Println("Loaded configuration from .env.yaml")
+		log.Println("Loaded configuration from .env.yaml", err)
 	} else {
-		log.Println("No .env.yaml file found, using only environment variables")
+		log.Println("No env.yaml file found, using only environment variables")
 	}
 
 	// Set up Viper to read from environment variables (and override values from the file)
@@ -136,7 +138,7 @@ func LoadConfig() (*Config, error) {
 		zap.Int("BULK SIZE", config.App.BulkSize),
 		zap.Int("MAX BULK PAYLOAD BYTES", config.App.MaxBulkPayloadBytes),
 		zap.Int("MAX RETRIES", config.App.MaxRetries),
-		zap.Duration("SCROLL TIMEOUT", config.App.ScrollTTL),
+		zap.String("SCROLL TIMEOUT", config.App.ScrollTTL),
 		zap.String("REDIS ADDR", fmt.Sprintf("%s:%d", config.Redis.Host, config.Redis.Port)),
 		zap.Duration("REDIS TTL", config.Redis.TTL),
 		zap.String("REDIS KEY SCROLL ID", config.Redis.KeyScrollID),

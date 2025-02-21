@@ -103,7 +103,7 @@ func main() {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			pipeline.TransformDocuments(docs, transformedDocs, cfg.Elk2.SortBy)
+			pipeline.TransformDocuments(docs, transformedDocs, cfg.App.SortBy)
 		}(i)
 	}
 

@@ -13,10 +13,10 @@ import (
 )
 
 type FakeUser struct {
-	ID        int       `json:"id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	TimeStamp time.Time `json:"started_at"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	TimeStamp int64  `json:"started_at"`
 }
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 	logger.InitLogger()
 	defer logger.Log.Sync()
 
-	generate(cfg, 1_000_000)
+	generate(cfg, 10_000_000)
 
 	return
 }
@@ -47,14 +47,14 @@ func generateFakeUsersDoc(counter int) FakeUser {
 		ID:        counter,
 		Name:      fmt.Sprintf("User%d", counter),
 		Email:     fmt.Sprintf("email@user%d.com", counter),
-		TimeStamp: time.Now(),
+		TimeStamp: time.Now().UnixMicro(),
 	}
 }
 
 // Generate populates Elasticsearch with fake documents.
 func generate(config *config.Config, numRecords int) {
-	docType := "document"
-	bulkURL := fmt.Sprintf("%s/%s/%s/_bulk", config.Elk2.Urls, config.Elk2.Index, docType)
+	docType := "documents"
+	bulkURL := fmt.Sprintf("%s/%s/%s/_bulk", config.Elk2.Urls[0], config.Elk2.Index, docType)
 
 	client := &http.Client{Timeout: config.App.TTL}
 	var bulkBuffer bytes.Buffer
