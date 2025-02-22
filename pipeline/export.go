@@ -7,6 +7,7 @@ import (
 	"elkmigration/logger"
 	"elkmigration/utils"
 	"errors"
+	"log"
 
 	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v3"
@@ -29,23 +30,27 @@ func ExportDocuments(ctx context.Context, config *config.Config, client clients.
 		From(config.App.StartDate).
 		To(config.App.EndDate)
 
-	// Log query for debugging
-	queryJSON, _ := rangeQuery.Source()
-	logger.Info("Generated Range Query", zap.Any("query", queryJSON))
+	count, err := es2Client.Count(config.Elk2.Index).Query(rangeQuery).Do()
+
+	if err != nil {
+		log.Fatalf("Error getting count: %v", err)
+	}
+
+	logger.Info("total", zap.Int64("count", count))
 
 	var scrollService *elastic.ScrollService
 	if scrollID == "" {
 		logger.Info("Starting from the beginning...")
 		scrollService = es2Client.Scroll(config.Elk2.Index).
 			Size(config.App.BulkSize).
-			Query(rangeQuery). // Use range query instead of MatchAllQuery
+			Query(rangeQuery).
 			Sort(config.App.SortBy, config.App.Asc).
-			Scroll(config.App.ScrollTTL) // Keep scroll alive for 2 minutes
+			Scroll(config.App.ScrollTTL)
 	} else {
 		logger.Info("Resuming from Scroll ID", zap.String("scrollID", scrollID))
 		scrollService = es2Client.Scroll(config.Elk2.Index).
 			ScrollId(scrollID).
-			Scroll(config.App.ScrollTTL) // Keep scroll alive
+			Scroll(config.App.ScrollTTL)
 	}
 
 	for {
@@ -79,6 +84,5 @@ func ExportDocuments(ctx context.Context, config *config.Config, client clients.
 			return
 		}
 
-		logger.Info("Processed batch, Scroll ID updated.", zap.String("scrollID", result.ScrollId))
 	}
 }
