@@ -90,11 +90,13 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("App.ScrollTTL", "APP_SCROLL_TTL")
 	viper.BindEnv("App.TTL", "APP_TTL")
 	viper.BindEnv("App.MaxRetries", "APP_MAX_RETRIES")
+	viper.BindEnv("App.SortBy", "APP_SORT_BY")
+	viper.BindEnv("App.Asc", "APP_ASC")
+	viper.BindEnv("App.StartDate", "APP_START_DATE")
+	viper.BindEnv("App.EndDate", "APP_END_DATE")
 
 	viper.BindEnv("Elk2.Urls", "ELK2_URLS")
 	viper.BindEnv("Elk2.Index", "ELK2_INDEX")
-	viper.BindEnv("Elk2.SortBy", "ELK2_SORT_BY")
-	viper.BindEnv("Elk2.Asc", "ELK2_ASC")
 	viper.BindEnv("Elk2.User", "ELK2_USER")
 	viper.BindEnv("Elk2.Pass", "ELK2_PASS")
 
@@ -114,7 +116,6 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("Redis.Pass", "REDIS_PASS")
 	viper.BindEnv("Redis.DB", "REDIS_DB")
 	viper.BindEnv("Redis.KeyScrollID", "REDIS_KEY_SCROLL_ID")
-	viper.BindEnv("Redis.MaxRetries", "REDIS_MAX_RETRIES")
 	viper.BindEnv("Redis.KeyTotalProcessed", "REDIS_KEY_TOTAL_PROCESSED")
 	viper.BindEnv("Redis.TTL", "REDIS_TTL")
 
