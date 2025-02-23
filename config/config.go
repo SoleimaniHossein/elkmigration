@@ -9,6 +9,7 @@ import (
 )
 
 type App struct {
+	MonigoPort          int
 	BulkSize            int
 	MaxBulkPayloadBytes int
 	ScrollTTL           string
@@ -85,6 +86,7 @@ func LoadConfig() (*Config, error) {
 		viper.AllowEmptyEnv(true)  // Allow unset environment variables
 	}
 
+	viper.BindEnv("App.MonigoPort", "APP_MONIGO_PORT")
 	viper.BindEnv("App.BulkSize", "APP_BULK_SIZE")
 	viper.BindEnv("App.MaxBulkPayloadBytes", "APP_MAX_BULK_PAYLOAD_BYTES")
 	viper.BindEnv("App.ScrollTTL", "APP_SCROLL_TTL")

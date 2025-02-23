@@ -15,19 +15,22 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - redis
-      - elk2
-      - elk8
+#      - elk2
+#      - elk8
     environment:
-      - APP_BULK_SIZE=10000
+      - APP_MONIGO_PORT=9099
+      - APP_BULK_SIZE=10_000
       - APP_MAX_BULK_PAYLOAD_BYTES=104857600
-      - APP_SCROLL_TTL=20m
+      - APP_SCROLL_TTL=10m
       - APP_TTL=60s
-      - APP_MAX_RETRIES=6
+      - APP_MAX_RETRIES=20
+      - APP_SORT_BY=started_at
+      - APP_ASC=true
+      - APP_START_DATE=0
+      - APP_END_DATE=1740225262435624
 
       - ELK2_URLS=http://172.29.234.37:9201
       - ELK2_INDEX=oxygen
-      - ELK2_SORT_BY=started_at
-      - ELK2_ASC=true
       - ELK2_USER=
       - ELK2_PASS=
 
@@ -39,13 +42,15 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_USER=
-      - REDIS_PASS=w5NtDpsBke
+      - REDIS_PASS=
       - REDIS_DB=0
       - REDIS_KEY_SCROLL_ID=scrollID
       - REDIS_KEY_TOTAL_PROCESSED=totalProcessed
-      - REDIS_TTL=20m
+      - REDIS_TTL=10m
     networks:
       - elk-net
+    ports:
+      - "8080:9099"
 
   redis:
     image: redis:7.0

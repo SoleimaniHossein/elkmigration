@@ -1,7 +1,7 @@
 ARG GO_VERSION=1.23.3
 
 FROM golang:${GO_VERSION}-alpine AS builder
-
+ENV GOPROXY=https://goproxy.cn,direct
 # Install build dependencies
 RUN apk add --no-cache gcc musl-dev
 
@@ -36,6 +36,12 @@ WORKDIR /
 COPY --from=builder /app/elkmigration /elkmigration
 
 RUN chmod +x /elkmigration
+
+# Set environment variable for port (Default: 8080)
+ENV APP_MONIGO_PORT=8080
+
+# Expose the port dynamically (not effective at runtime)
+EXPOSE ${APP_MONIGO_PORT}
 
 # Set the entrypoint to run the app
 ENTRYPOINT ["/elkmigration"]

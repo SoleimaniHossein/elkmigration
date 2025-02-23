@@ -29,15 +29,6 @@ const (
 
 func main() {
 
-	monigoInstance := &monigo.Monigo{
-		ServiceName:   "elkmigration", // Mandatory field
-		DashboardPort: 8080,           // Default is 8080
-	}
-
-	go monigoInstance.Start() // Starting monigo dashboard
-	go monigoInstance.GetGoRoutinesStats()
-	log.Println("Monigo dashboard started at port 8080")
-
 	start := time.Now()
 
 	defer func() {
@@ -59,6 +50,15 @@ func main() {
 
 	logger.InitLogger()
 	defer logger.Log.Sync()
+
+	monigoInstance := &monigo.Monigo{
+		ServiceName:   "elkmigration",     // Mandatory field
+		DashboardPort: cfg.App.MonigoPort, // Default is 8080
+	}
+
+	go monigoInstance.Start() // Starting monigo dashboard
+	go monigoInstance.GetGoRoutinesStats()
+	log.Printf("Monigo dashboard started at port %d", cfg.App.MonigoPort)
 
 	clients.InitRedis(ctx, &mu, cfg.Redis)
 	defer clients.CloseRedis()
