@@ -17,8 +17,10 @@ import (
 	"sync/atomic"
 )
 
-var totalProcessed int64 = 0
-var errorCount int64 = 0 // Atomic counter for errors
+var (
+	totalProcessed int64
+	errorCount     int64
+)
 
 func ImportDocuments(ctx context.Context, config *config.Config, client clients.ElasticsearchClient, redisClient *clients.RedisClient, transformedDocs <-chan map[string]interface{}) {
 	redisClient.Ctx = ctx
@@ -40,66 +42,67 @@ func ImportDocuments(ctx context.Context, config *config.Config, client clients.
 		bulkData = append(bulkData, doc)
 
 		if len(bulkData) >= config.App.BulkSize {
-			if handleBulkInsert(ctx, config, esClient.Client, redisClient, bulkData) {
+			if handleBulkInsert(ctx, config, esClient.Client, redisClient, &bulkData) {
 				return // Exit if max errors reached
 			}
-			bulkData = make([]map[string]interface{}, 0, config.App.BulkSize) // Reset bulk buffer
 		}
 	}
 
 	// Handle remaining documents
 	if len(bulkData) > 0 {
-		handleBulkInsert(ctx, config, esClient.Client, redisClient, bulkData)
+		handleBulkInsert(ctx, config, esClient.Client, redisClient, &bulkData)
 	}
 }
 
-func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Client, redisClient *clients.RedisClient, bulkData []map[string]interface{}) bool {
+func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Client, redisClient *clients.RedisClient, bulkData *[]map[string]interface{}) bool {
+	if len(*bulkData) == 0 {
+		return false
+	}
+
 	err := utils.Retry(ctx, config.App.MaxRetries, config.App.TTL, func() error {
-		return sendBulkRequest(config, client, redisClient, config.Elk8.Index, bulkData, config.App.MaxBulkPayloadBytes)
+		return sendBulkRequest(config, client, redisClient, config.Elk8.Index, *bulkData, config.App.MaxBulkPayloadBytes)
 	})
 
 	if err != nil {
-		atomic.AddInt64(&errorCount, 1) // Increment error count
-		logger.Error("Error sending bulk request", zap.Error(err), zap.Int64("error_count", errorCount))
+		atomic.AddInt64(&errorCount, 1)
+		logger.Error("Error sending bulk request", zap.Error(err), zap.Int64("error_count", atomic.LoadInt64(&errorCount)))
 
 		if atomic.LoadInt64(&errorCount) >= 3 {
 			logger.Fatal("Too many bulk request failures. Exiting...")
-			return true // Signal to exit
+			return true
 		}
 	}
+
+	// Reset bulkData to free memory
+	*bulkData = (*bulkData)[:0]
+
 	return false
 }
 
 func sendBulkRequest(config *config.Config, client *es8.Client, redisClient *clients.RedisClient, index string, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-
 	if index == "" {
 		return errors.New("index name is empty")
 	}
 
-	// Update totalProcessed count
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+
 	totalProcessed = updateTotalProcessed(redisClient, config.Redis)
 
 	for _, doc := range bulkData {
 		atomic.AddInt64(&totalProcessed, 1)
-
 		err := redisClient.Set(config.Redis.KeyTotalProcessed, totalProcessed, config.Redis.TTL)
 		if err != nil {
 			logger.Warn("Failed to save totalProcessed to Redis", zap.Error(err))
-			return err
 		}
 
-		meta := map[string]interface{}{
-			"create": map[string]interface{}{"_index": index},
-		}
-
+		meta := map[string]interface{}{"create": map[string]interface{}{"_index": index}}
 		if err := encoder.Encode(meta); err != nil {
 			logger.Error("Failed to encode metadata", zap.Error(err))
 			return err
 		}
 		if err := encoder.Encode(doc); err != nil {
-			logger.Error("Failed to encode document", zap.Error(err))
+			logger.Error("Failed to encode document", zap.Error(err), zap.Any("doc", doc))
 			return err
 		}
 
@@ -115,17 +118,16 @@ func sendBulkRequest(config *config.Config, client *es8.Client, redisClient *cli
 	// Send remaining documents
 	if buf.Len() > 0 {
 		if err := executeBulkRequest(client, buf.Bytes()); err != nil {
-			logger.Warn("executeBulkRequest err", zap.Error(err))
+			logger.Warn("executeBulkRequest error", zap.Error(err))
 			return err
 		}
 	}
 
-	logger.Info("Bulk request completed", zap.Int64("total_documents_processed", totalProcessed))
+	logger.Info("Bulk request completed", zap.Int64("total_documents_processed", atomic.LoadInt64(&totalProcessed)))
 	return nil
 }
 
 func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
-
 	res, err := client.Bulk(bytes.NewReader(bulkPayload))
 	if err != nil {
 		logger.Error("Failed to execute bulk request", zap.Error(err))
