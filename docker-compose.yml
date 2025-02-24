@@ -50,7 +50,7 @@ services:
     networks:
       - elk-net
     ports:
-      - "8080:9099"
+      - "8080:8080"
 
   redis:
     image: redis:7.0
