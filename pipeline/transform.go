@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"go.uber.org/zap"
 	"gopkg.in/olivere/elastic.v3"
-	"time"
 )
 
 func TransformDocuments(result <-chan *elastic.SearchResult, transformedDocs chan<- map[string]interface{}, timeStampField string) {
@@ -20,8 +19,9 @@ func TransformDocuments(result <-chan *elastic.SearchResult, transformedDocs cha
 
 			if _, ok := doc["@timestamp"]; !ok {
 				if val, ok := doc[timeStampField]; ok {
-					timestamp := int64(val.(float64))
-					doc["@timestamp"] = time.Unix(timestamp/1e3, (timestamp%1e3)*1e6).UTC()
+					doc["@timestamp"] = val
+					//timestamp := int64(val.(float64))
+					//doc["@timestamp"] = time.Unix(timestamp/1e3, (timestamp%1e3)*1e6).UTC()
 				} else if dtVal, ok := doc["datetime"]; ok {
 					doc["@timestamp"] = dtVal
 				} else {
