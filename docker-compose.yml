@@ -9,7 +9,7 @@ volumes:
 
 services:
   app:
-#    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.3
+#    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.8
     build:
       context: .
       dockerfile: Dockerfile
@@ -18,16 +18,18 @@ services:
 #      - elk2
 #      - elk8
     environment:
-      - APP_MONIGO_PORT=9099
-      - APP_BULK_SIZE=10_000
+      - TZ=Asia/Tehran
+
+      - APP_MONIGO_PORT=8080
+      - APP_BULK_SIZE=5000
       - APP_MAX_BULK_PAYLOAD_BYTES=104857600
-      - APP_SCROLL_TTL=10m
+      - APP_SCROLL_TTL=5m
       - APP_TTL=60s
-      - APP_MAX_RETRIES=20
+      - APP_MAX_RETRIES=100
       - APP_SORT_BY=started_at
       - APP_ASC=true
       - APP_START_DATE=0
-      - APP_END_DATE=1740225262435624
+      - APP_END_DATE=1733047384333
 
       - ELK2_URLS=http://172.29.234.37:9201
       - ELK2_INDEX=oxygen
@@ -46,7 +48,7 @@ services:
       - REDIS_DB=0
       - REDIS_KEY_SCROLL_ID=scrollID
       - REDIS_KEY_TOTAL_PROCESSED=totalProcessed
-      - REDIS_TTL=10m
+      - REDIS_TTL=5m
     networks:
       - elk-net
     ports:

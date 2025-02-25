@@ -2,6 +2,7 @@ ARG GO_VERSION=1.23.3
 
 FROM golang:${GO_VERSION}-alpine AS builder
 ENV GOPROXY=https://goproxy.cn,direct
+
 # Install build dependencies
 RUN apk add --no-cache gcc musl-dev
 
