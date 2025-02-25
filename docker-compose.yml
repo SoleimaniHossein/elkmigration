@@ -25,7 +25,7 @@ services:
       - APP_MAX_BULK_PAYLOAD_BYTES=104857600
       - APP_SCROLL_TTL=5m
       - APP_TTL=60s
-      - APP_MAX_RETRIES=100
+      - APP_MAX_RETRIES=5
       - APP_SORT_BY=started_at
       - APP_ASC=true
       - APP_START_DATE=0
