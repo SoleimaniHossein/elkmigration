@@ -13,25 +13,23 @@ import (
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"go.uber.org/zap"
 	"io"
-	"strconv"
+	"strings"
 	"sync/atomic"
 )
 
 var (
-	totalProcessed int64
-	errorCount     int64
+	errorCount int64
 )
 
-func ImportDocuments(ctx context.Context, config *config.Config, client clients.ElasticsearchClient, redisClient *clients.RedisClient, transformedDocs <-chan map[string]interface{}) {
-	redisClient.Ctx = ctx
+func ImportDocuments(ctx context.Context, config *config.Config, elk8Client clients.ElasticsearchClient, transformedDocs <-chan map[string]interface{}) {
 
-	esClient, ok := client.(*clients.Es8Client)
+	es8Client, ok := elk8Client.(*clients.Es8Client)
 	if !ok {
 		logger.Fatal("Invalid client type; expected *ES8Client")
 	}
 
 	// Check if the index exists
-	_, err := esClient.Client.Indices.Exists([]string{config.Elk8.Index}, esClient.Client.Indices.Exists.WithContext(ctx))
+	_, err := es8Client.Client.Indices.Exists([]string{config.Elk8.Index}, es8Client.Client.Indices.Exists.WithContext(ctx))
 	if err != nil {
 		logger.Fatal("Error checking if index exists", zap.Error(err))
 	}
@@ -42,7 +40,7 @@ func ImportDocuments(ctx context.Context, config *config.Config, client clients.
 		bulkData = append(bulkData, doc)
 
 		if len(bulkData) >= config.App.BulkSize {
-			if handleBulkInsert(ctx, config, esClient.Client, redisClient, &bulkData) {
+			if handleBulkInsert(ctx, config, es8Client.Client, &bulkData) {
 				return // Exit if max errors reached
 			}
 		}
@@ -50,17 +48,17 @@ func ImportDocuments(ctx context.Context, config *config.Config, client clients.
 
 	// Handle remaining documents
 	if len(bulkData) > 0 {
-		handleBulkInsert(ctx, config, esClient.Client, redisClient, &bulkData)
+		handleBulkInsert(ctx, config, es8Client.Client, &bulkData)
 	}
 }
 
-func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Client, redisClient *clients.RedisClient, bulkData *[]map[string]interface{}) bool {
+func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Client, bulkData *[]map[string]interface{}) bool {
 	if len(*bulkData) == 0 {
 		return false
 	}
 
 	err := utils.Retry(ctx, config.App.MaxRetries, config.App.TTL, func() error {
-		return sendBulkRequest(config, client, redisClient, config.Elk8.Index, *bulkData, config.App.MaxBulkPayloadBytes)
+		return sendBulkRequest(ctx, client, config.Elk8.Index, *bulkData, config.App.MaxBulkPayloadBytes)
 	})
 
 	if err != nil {
@@ -79,7 +77,7 @@ func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Cl
 	return false
 }
 
-func sendBulkRequest(config *config.Config, client *es8.Client, redisClient *clients.RedisClient, index string, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
+func sendBulkRequest(ctx context.Context, client *es8.Client, index string, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
 	if index == "" {
 		return errors.New("index name is empty")
 	}
@@ -87,14 +85,9 @@ func sendBulkRequest(config *config.Config, client *es8.Client, redisClient *cli
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 
-	totalProcessed = updateTotalProcessed(redisClient, config.Redis)
+	//totalProcessed = updateTotalProcessed()
 
 	for _, doc := range bulkData {
-		atomic.AddInt64(&totalProcessed, 1)
-		err := redisClient.Set(config.Redis.KeyTotalProcessed, totalProcessed, config.Redis.TTL)
-		if err != nil {
-			logger.Warn("Failed to save totalProcessed to Redis", zap.Error(err))
-		}
 
 		meta := map[string]interface{}{"create": map[string]interface{}{"_index": index}}
 		if err := encoder.Encode(meta); err != nil {
@@ -123,7 +116,13 @@ func sendBulkRequest(config *config.Config, client *es8.Client, redisClient *cli
 		}
 	}
 
-	logger.Info("Bulk request completed", zap.Int64("total_documents_processed", atomic.LoadInt64(&totalProcessed)))
+	count, err := GetDocumentCount(ctx, client)
+	if err != nil {
+		logger.Error("Error getting document count", zap.Error(err))
+		return err
+	}
+
+	logger.Info("Bulk request completed", zap.Int64("total_documents_processed", count))
 	return nil
 }
 
@@ -169,18 +168,32 @@ func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
 	return nil
 }
 
-func updateTotalProcessed(redisClient *clients.RedisClient, redisConfig config.Redis) int64 {
-	stringValue, err := redisClient.Get(redisConfig.KeyTotalProcessed)
+// CountResponse represents the response structure of the _count API.
+type CountResponse struct {
+	Count int64 `json:"count"`
+}
+
+// GetDocumentCount retrieves the number of documents in an Elasticsearch 8 index.
+func GetDocumentCount(ctx context.Context, es8Client *es8.Client) (int64, error) {
+	// Prepare the request body (optional query filter)
+	body := `{"query": {"match_all": {}}}`
+
+	// Execute the count request
+	res, err := es8Client.Count(
+		es8Client.Count.WithContext(ctx),
+		es8Client.Count.WithBody(strings.NewReader(body)),
+		es8Client.Count.WithPretty(),
+	)
 	if err != nil {
-		logger.Warn("Failed to retrieve totalProcessed from Redis", zap.Error(err))
-		return 0
+		return 0, err
+	}
+	defer res.Body.Close()
+
+	// Parse the response
+	var countResp CountResponse
+	if err := json.NewDecoder(res.Body).Decode(&countResp); err != nil {
+		return 0, err
 	}
 
-	val, err := strconv.ParseInt(stringValue, 10, 64)
-	if err != nil {
-		logger.Warn("Error converting string to int64", zap.Error(err))
-		return 0
-	}
-
-	return val
+	return countResp.Count, nil
 }

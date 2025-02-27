@@ -96,7 +96,7 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			monigo.TraceFunction(func() {
-				pipeline.ExportDocuments(ctx, cfg, es2Client, docs, clients.RC)
+				pipeline.ExportDocuments(ctx, cfg, es2Client, es8Client, docs, clients.RC)
 			})
 		}(i)
 	}
@@ -106,7 +106,7 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			monigo.TraceFunction(func() {
-				pipeline.TransformDocuments(docs, transformedDocs, cfg.App.SortBy)
+				pipeline.TransformDocuments(docs, transformedDocs, cfg.Elk2.SortBy)
 			})
 		}(i)
 	}
@@ -117,7 +117,7 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			monigo.TraceFunction(func() {
-				pipeline.ImportDocuments(ctxImport, cfg, es8Client, clients.RC, transformedDocs)
+				pipeline.ImportDocuments(ctxImport, cfg, es8Client, transformedDocs)
 			})
 		}(i)
 	}

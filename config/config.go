@@ -15,31 +15,33 @@ type App struct {
 	ScrollTTL           string
 	TTL                 time.Duration
 	MaxRetries          int
-	SortBy              string
-	Asc                 bool
-	StartDate           int64
-	EndDate             int64
 }
 
 type Elk2 struct {
-	Urls  []string
-	Index string
-	User  string
-	Pass  string
+	Urls   []string
+	Index  string
+	User   string
+	Pass   string
+	SortBy string
+	Asc    bool
 }
 
 type Elk7 struct {
-	Urls  []string
-	Index string
-	User  string
-	Pass  string
+	Urls   []string
+	Index  string
+	User   string
+	Pass   string
+	SortBy string
+	Asc    bool
 }
 
 type Elk8 struct {
-	Urls  []string
-	Index string
-	User  string
-	Pass  string
+	Urls   []string
+	Index  string
+	User   string
+	Pass   string
+	SortBy string
+	Asc    bool
 }
 
 type Redis struct {
