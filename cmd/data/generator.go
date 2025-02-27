@@ -36,7 +36,7 @@ func main() {
 	logger.InitLogger()
 	defer logger.Log.Sync()
 
-	generate(cfg, 10_000_000)
+	generate(cfg, 1_000_000)
 
 	return
 }
@@ -47,7 +47,7 @@ func generateFakeUsersDoc(counter int) FakeUser {
 		ID:        counter,
 		Name:      fmt.Sprintf("User%d", counter),
 		Email:     fmt.Sprintf("email@user%d.com", counter),
-		TimeStamp: time.Now().UnixMicro(),
+		TimeStamp: time.Now().UnixMilli(),
 	}
 }
 

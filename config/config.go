@@ -36,12 +36,12 @@ type Elk7 struct {
 }
 
 type Elk8 struct {
-	Urls   []string
-	Index  string
-	User   string
-	Pass   string
-	SortBy string
-	Asc    bool
+	Urls    []string
+	Index   string
+	User    string
+	Pass    string
+	SortBy  string
+	OrderBy string
 }
 
 type Redis struct {

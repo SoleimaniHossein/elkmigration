@@ -8,58 +8,58 @@ volumes:
   es8_data: {}
 
 services:
-  app:
-#    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.8
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      - redis
-#      - elk2
-#      - elk8
-    environment:
-      - TZ=Asia/Tehran
+#  app:
+##    image: repo.sadad.co.ir/repository/oxygen-docker-group/elkmigration:0.0.8
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    depends_on:
+#      - redis
+##      - elk2
+##      - elk8
+#    environment:
+#      - TZ=Asia/Tehran
+#
+#      - APP_MONIGO_PORT=8080
+#      - APP_BULK_SIZE=5000
+#      - APP_MAX_BULK_PAYLOAD_BYTES=104857600
+#      - APP_SCROLL_TTL=5m
+#      - APP_TTL=60s
+#      - APP_MAX_RETRIES=5
+#      - APP_SORT_BY=started_at
+#      - APP_ASC=true
+#      - APP_START_DATE=0
+#      - APP_END_DATE=1733047384333
+#
+#      - ELK2_URLS=http://172.29.234.37:9201
+#      - ELK2_INDEX=oxygen
+#      - ELK2_USER=
+#      - ELK2_PASS=
+#
+#      - ELK8_URLS=http://172.30.43.125:9200,http://172.30.43.126:9200,http://172.30.43.127:9200
+#      - ELK8_INDEX=logs-generic-kong-kafka-log-plugin
+#      - ELK8_USER=kngkafkausr
+#      - ELK8_PASS=aTDRkbUWJUYTY%
+#
+#      - REDIS_HOST=redis
+#      - REDIS_PORT=6379
+#      - REDIS_USER=
+#      - REDIS_PASS=
+#      - REDIS_DB=0
+#      - REDIS_KEY_SCROLL_ID=scrollID
+#      - REDIS_KEY_TOTAL_PROCESSED=totalProcessed
+#      - REDIS_TTL=5m
+#    networks:
+#      - elk-net
+#    ports:
+#      - "8080:8080"
 
-      - APP_MONIGO_PORT=8080
-      - APP_BULK_SIZE=5000
-      - APP_MAX_BULK_PAYLOAD_BYTES=104857600
-      - APP_SCROLL_TTL=5m
-      - APP_TTL=60s
-      - APP_MAX_RETRIES=5
-      - APP_SORT_BY=started_at
-      - APP_ASC=true
-      - APP_START_DATE=0
-      - APP_END_DATE=1733047384333
-
-      - ELK2_URLS=http://172.29.234.37:9201
-      - ELK2_INDEX=oxygen
-      - ELK2_USER=
-      - ELK2_PASS=
-
-      - ELK8_URLS=http://172.30.43.125:9200,http://172.30.43.126:9200,http://172.30.43.127:9200
-      - ELK8_INDEX=logs-generic-kong-kafka-log-plugin
-      - ELK8_USER=kngkafkausr
-      - ELK8_PASS=aTDRkbUWJUYTY%
-
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_USER=
-      - REDIS_PASS=
-      - REDIS_DB=0
-      - REDIS_KEY_SCROLL_ID=scrollID
-      - REDIS_KEY_TOTAL_PROCESSED=totalProcessed
-      - REDIS_TTL=5m
-    networks:
-      - elk-net
-    ports:
-      - "8080:8080"
-
-  redis:
-    image: redis:7.0
-    ports:
-      - "6379:6379"
-    networks:
-      - elk-net
+#  redis:
+#    image: redis:7.0
+#    ports:
+#      - "6379:6379"
+#    networks:
+#      - elk-net
 
 
   elk2:

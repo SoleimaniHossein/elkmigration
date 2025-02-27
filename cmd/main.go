@@ -37,7 +37,6 @@ func main() {
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	var mu sync.Mutex
 	var wg sync.WaitGroup
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
@@ -59,9 +58,6 @@ func main() {
 	go monigoInstance.Start() // Starting monigo dashboard
 	go monigoInstance.GetGoRoutinesStats()
 	log.Printf("Monigo dashboard started at port %d", cfg.App.MonigoPort)
-
-	clients.InitRedis(ctx, &mu, cfg.Redis)
-	defer clients.CloseRedis()
 
 	// Get the number of available CPU cores
 	numCPU := runtime.NumCPU()

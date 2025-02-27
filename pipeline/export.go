@@ -106,7 +106,7 @@ func ExportDocuments(ctx context.Context, config *config.Config, elk2client clie
 
 	// Step 3: Construct Range Query (fetch documents from ELK 2 starting from `latestStartedAt`)
 	rangeQuery := elastic.NewRangeQuery("started_at").
-		From(latestStartedAt)
+		Gt(latestStartedAt)
 
 	es2Client := elk2client.(*clients.Es2Client).Client
 
@@ -178,8 +178,8 @@ func GetLatestStartedAt(ctx context.Context, config *config.Config, elk8Client c
 		es8Client.Search.WithContext(ctx),
 		es8Client.Search.WithIndex(config.Elk8.Index),
 		es8Client.Search.WithPretty(),
-		es8Client.Search.WithSort(fmt.Sprintf("%s:%t", config.Elk8.SortBy, config.Elk8.Asc)), // Get the latest first
-		es8Client.Search.WithSourceIncludes(config.Elk8.SortBy),                              // Fetch only `started_at`
+		es8Client.Search.WithSort(fmt.Sprintf("%s:%s", config.Elk8.SortBy, config.Elk8.OrderBy)), // Get the latest first
+		es8Client.Search.WithSourceIncludes(config.Elk8.SortBy),                                  // Fetch only `started_at`
 		es8Client.Search.WithSize(1),
 	)
 
