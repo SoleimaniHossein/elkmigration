@@ -92,7 +92,7 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 			monigo.TraceFunction(func() {
-				pipeline.ExportDocuments(ctx, cfg, es2Client, es8Client, docs, clients.RC)
+				pipeline.ExportDocuments(ctx, cfg, es2Client, es8Client, docs)
 			})
 		}(i)
 	}

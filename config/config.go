@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"log"
@@ -27,12 +26,12 @@ type Elk2 struct {
 }
 
 type Elk7 struct {
-	Urls   []string
-	Index  string
-	User   string
-	Pass   string
-	SortBy string
-	Asc    bool
+	Urls    []string
+	Index   string
+	User    string
+	Pass    string
+	SortBy  string
+	OrderBy string
 }
 
 type Elk8 struct {
@@ -44,24 +43,12 @@ type Elk8 struct {
 	OrderBy string
 }
 
-type Redis struct {
-	Host              string
-	Port              int
-	User              string
-	Pass              string
-	DB                int
-	KeyScrollID       string
-	KeyTotalProcessed string
-	TTL               time.Duration
-}
-
 // Config holds the application configuration
 type Config struct {
-	App   App
-	Elk2  Elk2
-	Elk7  Elk7
-	Elk8  Elk8
-	Redis Redis
+	App  App
+	Elk2 Elk2
+	Elk7 Elk7
+	Elk8 Elk8
 }
 
 // LoadConfig initializes the application configuration from environment variables
@@ -82,7 +69,7 @@ func LoadConfig() (*Config, error) {
 	viper.AutomaticEnv() // This ensures OS env variables take precedence over config file
 
 	// Set multiple prefixes
-	prefixes := []string{"APP", "ELK2", "ELK7", "ELK8", "REDIS"}
+	prefixes := []string{"APP", "ELK2", "ELK7", "ELK8"}
 	for _, prefix := range prefixes {
 		viper.SetEnvPrefix(prefix) // Apply the prefix for env vars
 		viper.AllowEmptyEnv(true)  // Allow unset environment variables
@@ -94,34 +81,20 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("App.ScrollTTL", "APP_SCROLL_TTL")
 	viper.BindEnv("App.TTL", "APP_TTL")
 	viper.BindEnv("App.MaxRetries", "APP_MAX_RETRIES")
-	viper.BindEnv("App.SortBy", "APP_SORT_BY")
-	viper.BindEnv("App.Asc", "APP_ASC")
-	viper.BindEnv("App.StartDate", "APP_START_DATE")
-	viper.BindEnv("App.EndDate", "APP_END_DATE")
 
 	viper.BindEnv("Elk2.Urls", "ELK2_URLS")
 	viper.BindEnv("Elk2.Index", "ELK2_INDEX")
 	viper.BindEnv("Elk2.User", "ELK2_USER")
 	viper.BindEnv("Elk2.Pass", "ELK2_PASS")
-
-	viper.BindEnv("Elk7.Urls", "ELK7_URLS")
-	viper.BindEnv("Elk7.Index", "ELK7_INDEX")
-	viper.BindEnv("Elk7.User", "ELK7_USER")
-	viper.BindEnv("Elk7.Pass", "ELK7_PASS")
+	viper.BindEnv("Elk2.SortBy", "ELK2_SORT_BY")
+	viper.BindEnv("Elk2.Asc", "ELK2_ASC")
 
 	viper.BindEnv("Elk8.Urls", "ELK8_URLS")
 	viper.BindEnv("Elk8.Index", "ELK8_INDEX")
 	viper.BindEnv("Elk8.User", "ELK8_USER")
 	viper.BindEnv("Elk8.Pass", "ELK8_PASS")
-
-	viper.BindEnv("Redis.Host", "REDIS_HOST")
-	viper.BindEnv("Redis.Port", "REDIS_PORT")
-	viper.BindEnv("Redis.User", "REDIS_USER")
-	viper.BindEnv("Redis.Pass", "REDIS_PASS")
-	viper.BindEnv("Redis.DB", "REDIS_DB")
-	viper.BindEnv("Redis.KeyScrollID", "REDIS_KEY_SCROLL_ID")
-	viper.BindEnv("Redis.KeyTotalProcessed", "REDIS_KEY_TOTAL_PROCESSED")
-	viper.BindEnv("Redis.TTL", "REDIS_TTL")
+	viper.BindEnv("Elk8.SortBy", "ELK8_SORT_BY")
+	viper.BindEnv("Elk8.OrderBy", "ELK8_ORDER_BY")
 
 	// Define a Config struct to hold the configuration
 	var config Config
@@ -137,18 +110,18 @@ func LoadConfig() (*Config, error) {
 	defer configLogger.Sync()
 	configLogger.Info("Configuration loaded",
 		zap.Strings("ELK2 URLs", config.Elk2.Urls),
+		zap.String("ELK2 INDEX (FROM)", config.Elk2.Index),
+		zap.String("ELK2 SORT BY", config.Elk2.SortBy),
+		zap.Bool("Elk2 ORDER BY ASC", config.Elk2.Asc),
 		zap.Strings("ELK8 URLs", config.Elk8.Urls),
-		zap.String("ELK INDEX FROM", config.Elk2.Index),
-		zap.String("ELK INDEX TO", config.Elk8.Index),
+		zap.String("ELK8 INDEX (TO)", config.Elk8.Index),
+		zap.String("ELK8 SORT BY", config.Elk8.SortBy),
+		zap.String("ELK8 ORDER BY", config.Elk8.OrderBy),
 		zap.Int("BULK SIZE", config.App.BulkSize),
 		zap.Int("MAX BULK PAYLOAD BYTES", config.App.MaxBulkPayloadBytes),
-		zap.Int("MAX RETRIES", config.App.MaxRetries),
 		zap.String("SCROLL TIMEOUT", config.App.ScrollTTL),
-		zap.String("REDIS ADDR", fmt.Sprintf("%s:%d", config.Redis.Host, config.Redis.Port)),
-		zap.Duration("REDIS TTL", config.Redis.TTL),
-		zap.String("REDIS KEY SCROLL ID", config.Redis.KeyScrollID),
-		zap.String("REDIS KEY TOTAL PROCESSED", config.Redis.KeyTotalProcessed),
 		zap.Duration("APP TIMEOUT", config.App.TTL),
+		zap.Int("MAX RETRIES", config.App.MaxRetries),
 	)
 
 	return &config, nil

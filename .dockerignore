@@ -1,1 +1,11 @@
 Makefile
+Dockerfile
+docker-compose
+.docker
+.git
+.idea
+.dockerignore
+.gitignore
+elk.readme
+env.yaml
+monigo

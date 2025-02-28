@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.23.3
+ARG GO_VERSION=1.24.0
 
 FROM golang:${GO_VERSION}-alpine AS builder
 ENV GOPROXY=https://goproxy.cn,direct

@@ -10,11 +10,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	es8 "github.com/elastic/go-elasticsearch/v8"
-	"go.uber.org/zap"
 	"io"
 	"strings"
 	"sync/atomic"
+
+	"github.com/dustin/go-humanize"
+	es8 "github.com/elastic/go-elasticsearch/v8"
+	"go.uber.org/zap"
 )
 
 var (
@@ -122,7 +124,7 @@ func sendBulkRequest(ctx context.Context, client *es8.Client, index string, bulk
 		return err
 	}
 
-	logger.Info("Bulk request completed", zap.Int64("total_documents_processed", count))
+	logger.Info("Bulk request completed", zap.String("total_documents_processed", humanize.Comma(count)))
 	return nil
 }
 
@@ -140,11 +142,19 @@ func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
 		return readErr
 	}
 
+	// Log raw response if request fails
 	if res.IsError() {
 		logger.Error("Elasticsearch HTTP error", zap.String("status", res.Status()), zap.String("body", string(body)))
+
+		// Handle payload too large (413)
+		if res.StatusCode == 413 {
+			logger.Fatal("Bulk payload is too large! Reduce 'maxBulkPayloadBytes'")
+		}
+
 		return fmt.Errorf("elasticsearch error: %s", res.Status())
 	}
 
+	// Parse the bulk response
 	var bulkResponse struct {
 		Errors bool                                `json:"errors"`
 		Items  []map[string]map[string]interface{} `json:"items"`
@@ -155,14 +165,22 @@ func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
 		return err
 	}
 
+	// Check for document-specific errors
 	if bulkResponse.Errors {
+		errorCount := 0
 		for _, item := range bulkResponse.Items {
 			for action, result := range item {
 				if errMsg, ok := result["error"].(map[string]interface{}); ok {
-					logger.Error(fmt.Sprintf("%s: %v", action, errMsg))
+					docID, _ := result["_id"].(string) // Get document ID if available
+					logger.Error(fmt.Sprintf("Failed to %s document", action),
+						zap.String("doc_id", docID),
+						zap.Any("error", errMsg),
+					)
+					errorCount++
 				}
 			}
 		}
+		logger.Warn("Bulk request had document-level errors", zap.Int("error_count", errorCount))
 	}
 
 	return nil
