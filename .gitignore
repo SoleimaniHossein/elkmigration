@@ -46,3 +46,7 @@ coverage.out
 *.swp
 *.bak
 *.old
+
+
+#custom
+monigo

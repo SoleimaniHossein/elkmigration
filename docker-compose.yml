@@ -44,7 +44,7 @@ services:
       - ELK8_USER=
       - ELK8_PASS=
       - ELK8_SORT_BY=started_at
-      - ELK8_PASS=desc
+      - ELK8_ORDER_BY=desc
 
      
 

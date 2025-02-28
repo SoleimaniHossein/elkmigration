@@ -36,7 +36,7 @@ func main() {
 	logger.InitLogger()
 	defer logger.Log.Sync()
 
-	generate(cfg, 10_000_000)
+	generate(cfg, 1_000_000)
 
 	return
 }
