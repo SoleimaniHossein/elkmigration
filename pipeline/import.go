@@ -66,11 +66,6 @@ func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Cl
 	if err != nil {
 		atomic.AddInt64(&errorCount, 1)
 		logger.Error("Error sending bulk request", zap.Error(err), zap.Int64("error_count", atomic.LoadInt64(&errorCount)))
-
-		if atomic.LoadInt64(&errorCount) >= 3 {
-			logger.Fatal("Too many bulk request failures. Exiting...")
-			return true
-		}
 	}
 
 	// Reset bulkData to free memory
@@ -152,15 +147,13 @@ func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
 
 		// Handle 413 Payload Too Large
 		if res.StatusCode == 413 {
+			atomic.AddInt64(&errorCount, 1)
 			logger.Warn("Bulk payload is too large! Skipping this batch and continuing...", zap.Int64("total_errors", atomic.LoadInt64(&errorCount)))
 
 			// Extract and log document details
 			var docs []map[string]interface{}
 			if err := json.Unmarshal(bulkPayload, &docs); err == nil {
-				for i, doc := range docs {
-					if i >= 5 { // Limit log entries to 5
-						break
-					}
+				for _, doc := range docs {
 					docID, _ := doc["_id"].(string)
 					dateTime, _ := doc["datetime"].(string)
 					logger.Warn("Skipping document due to 413 error",
