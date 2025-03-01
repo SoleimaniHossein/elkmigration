@@ -16,22 +16,22 @@ import (
 )
 
 // ExportDocuments exports documents from Elasticsearch 2.x using a range query and scroll API,
-// continuing from the latest `started_at` timestamp in ELK 8.
+// continuing from the latest `datetime` timestamp in ELK 8.
 func ExportDocuments(ctx context.Context, config *config.Config, elk2client clients.ElasticsearchClient, elk8Client clients.ElasticsearchClient, docs chan<- *elastic.SearchResult) {
 	defer close(docs)
 
-	// Step 1: Fetch the latest `started_at` from ELK 8
-	latestStartedAt, err := GetLatestStartedAt(ctx, config, elk8Client)
+	// Step 1: Fetch the latest `datetime` from ELK 8
+	latestDateTime, err := GetLatestDateTime(ctx, config, elk8Client)
 	if err != nil {
-		logger.Warn("Failed to get latest started_at from ELK 8. Defaulting to configured start date.", zap.Error(err))
-		latestStartedAt = 0 // Fallback to the configured start date
+		logger.Warn("Failed to get latest datetime from ELK 8. Defaulting to configured start date.", zap.Error(err))
+		latestDateTime = 0 // Fallback to the configured start date
 	}
 
-	logger.Info("Using latest started_at for migration", zap.Int64("latest_started_at", latestStartedAt))
+	logger.Info("Using latest datetime for migration", zap.Int64("latest_datetime", latestDateTime))
 
-	// Step 3: Construct Range Query (fetch documents from ELK 2 starting from `latestStartedAt`)
+	// Step 3: Construct Range Query (fetch documents from ELK 2 starting from `latestDateTime`)
 	rangeQuery := elastic.NewRangeQuery(config.Elk2.SortBy).
-		Gt(latestStartedAt)
+		Gt(latestDateTime)
 
 	es2Client := elk2client.(*clients.Es2Client).Client
 
@@ -94,18 +94,18 @@ func ExportDocuments(ctx context.Context, config *config.Config, elk2client clie
 	}
 }
 
-// GetLatestStartedAt retrieves the latest `started_at` timestamp from Elasticsearch 8.
-func GetLatestStartedAt(ctx context.Context, config *config.Config, elk8Client clients.ElasticsearchClient) (int64, error) {
+// GetLatestDateTime retrieves the latest `datetime` timestamp from Elasticsearch 8.
+func GetLatestDateTime(ctx context.Context, config *config.Config, elk8Client clients.ElasticsearchClient) (int64, error) {
 	es8Client := elk8Client.(*clients.Es8Client).Client
 
 	logger.Info(fmt.Sprintf("%s:%s", config.Elk8.SortBy, config.Elk8.OrderBy))
-	// Elasticsearch query to fetch the latest started_at
+	// Elasticsearch query to fetch the latest datetime
 	res, err := es8Client.Search(
 		es8Client.Search.WithContext(ctx),
 		es8Client.Search.WithIndex(config.Elk8.Index),
 		es8Client.Search.WithPretty(),
 		es8Client.Search.WithSort(fmt.Sprintf("%s:%s", config.Elk8.SortBy, config.Elk8.OrderBy)), // Get the latest first
-		es8Client.Search.WithSourceIncludes(config.Elk8.SortBy),                                  // Fetch only `started_at`
+		es8Client.Search.WithSourceIncludes(config.Elk8.SortBy),                                  // Fetch only `datetime`
 		es8Client.Search.WithSize(1),
 	)
 
@@ -125,7 +125,7 @@ func GetLatestStartedAt(ctx context.Context, config *config.Config, elk8Client c
 		Hits struct {
 			Hits []struct {
 				Source struct {
-					StartedAt int64 `json:"started_at"`
+					DateTime int64 `json:"datetime"`
 				} `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
@@ -141,9 +141,9 @@ func GetLatestStartedAt(ctx context.Context, config *config.Config, elk8Client c
 		return 0, fmt.Errorf("no documents found in index: %s", config.Elk8.Index)
 	}
 
-	// Extract the latest `started_at` timestamp
-	latestStartedAt := searchResult.Hits.Hits[0].Source.StartedAt
-	log.Printf("Latest started_at fetched: %d", latestStartedAt)
+	// Extract the latest `datetime` timestamp
+	latestDateTime := searchResult.Hits.Hits[0].Source.DateTime
+	log.Printf("Latest datetime fetched: %d", latestDateTime)
 
-	return latestStartedAt, nil
+	return latestDateTime, nil
 }

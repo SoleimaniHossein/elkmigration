@@ -39,7 +39,7 @@ func TransformDocuments(result <-chan *elastic.SearchResult, transformedDocs cha
 				case time.Time:
 					timestamp = v.UTC()
 				default:
-					if dtVal, ok := doc["datetime"]; ok {
+					if dtVal, ok := doc[timeStampField]; ok {
 						if parsedTime, err := time.Parse(time.RFC3339, fmt.Sprintf("%v", dtVal)); err == nil {
 							timestamp = parsedTime.UTC()
 						} else {

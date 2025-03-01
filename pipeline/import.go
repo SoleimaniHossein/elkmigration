@@ -129,58 +129,86 @@ func sendBulkRequest(ctx context.Context, client *es8.Client, index string, bulk
 }
 
 func executeBulkRequest(client *es8.Client, bulkPayload []byte) error {
+	// Execute the bulk request
 	res, err := client.Bulk(bytes.NewReader(bulkPayload))
 	if err != nil {
-		logger.Error("Failed to execute bulk request", zap.Error(err))
+		atomic.AddInt64(&errorCount, 1)
+		logger.Error("Failed to execute bulk request", zap.Error(err), zap.Int64("total_errors", atomic.LoadInt64(&errorCount)))
 		return err
 	}
 	defer res.Body.Close()
 
 	body, readErr := io.ReadAll(res.Body)
 	if readErr != nil {
-		logger.Error("Failed to read bulk response", zap.Error(readErr))
+		atomic.AddInt64(&errorCount, 1)
+		logger.Error("Failed to read bulk response", zap.Error(readErr), zap.Int64("total_errors", atomic.LoadInt64(&errorCount)))
 		return readErr
 	}
 
-	// Log raw response if request fails
+	// Log errors in the response
 	if res.IsError() {
-		logger.Error("Elasticsearch HTTP error", zap.String("status", res.Status()), zap.String("body", string(body)))
+		atomic.AddInt64(&errorCount, 1)
+		logger.Error("Elasticsearch HTTP error", zap.String("status", res.Status()), zap.Int64("total_errors", atomic.LoadInt64(&errorCount)))
 
-		// Handle payload too large (413)
+		// Handle 413 Payload Too Large
 		if res.StatusCode == 413 {
-			logger.Fatal("Bulk payload is too large! Reduce 'maxBulkPayloadBytes'")
+			logger.Warn("Bulk payload is too large! Skipping this batch and continuing...", zap.Int64("total_errors", atomic.LoadInt64(&errorCount)))
+
+			// Extract and log document details
+			var docs []map[string]interface{}
+			if err := json.Unmarshal(bulkPayload, &docs); err == nil {
+				for i, doc := range docs {
+					if i >= 5 { // Limit log entries to 5
+						break
+					}
+					docID, _ := doc["_id"].(string)
+					dateTime, _ := doc["datetime"].(string)
+					logger.Warn("Skipping document due to 413 error",
+						zap.String("doc_id", docID),
+						zap.String("datetime", dateTime),
+						zap.Int64("total_errors", atomic.LoadInt64(&errorCount)),
+					)
+				}
+			} else {
+				logger.Warn("Failed to parse documents for logging")
+			}
+
+			return nil // Continue processing other requests
 		}
 
 		return fmt.Errorf("elasticsearch error: %s", res.Status())
 	}
 
-	// Parse the bulk response
+	// Parse the bulk response to check for document-level errors
 	var bulkResponse struct {
 		Errors bool                                `json:"errors"`
 		Items  []map[string]map[string]interface{} `json:"items"`
 	}
 
 	if err := json.Unmarshal(body, &bulkResponse); err != nil {
-		logger.Error("Failed to parse bulk response", zap.Error(err))
+		atomic.AddInt64(&errorCount, 1)
+		logger.Error("Failed to parse bulk response", zap.Error(err), zap.Int64("total_errors", atomic.LoadInt64(&errorCount)))
 		return err
 	}
 
-	// Check for document-specific errors
+	// Handle document-level errors
 	if bulkResponse.Errors {
-		errorCount := 0
 		for _, item := range bulkResponse.Items {
 			for action, result := range item {
 				if errMsg, ok := result["error"].(map[string]interface{}); ok {
-					docID, _ := result["_id"].(string) // Get document ID if available
+					atomic.AddInt64(&errorCount, 1)
+					docID, _ := result["_id"].(string)
+					dateTime, _ := result["datetime"].(string) // If available in response
 					logger.Error(fmt.Sprintf("Failed to %s document", action),
 						zap.String("doc_id", docID),
+						zap.String("datetime", dateTime),
 						zap.Any("error", errMsg),
+						zap.Int64("total_errors", atomic.LoadInt64(&errorCount)),
 					)
-					errorCount++
 				}
 			}
 		}
-		logger.Warn("Bulk request had document-level errors", zap.Int("error_count", errorCount))
+		logger.Warn("Bulk request had document-level errors", zap.Int64("total_errors", atomic.LoadInt64(&errorCount)))
 	}
 
 	return nil

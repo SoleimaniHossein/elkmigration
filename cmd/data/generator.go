@@ -16,7 +16,7 @@ type FakeUser struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
 	Email     string `json:"email"`
-	TimeStamp int64  `json:"started_at"`
+	TimeStamp int64  `json:"datetime"`
 }
 
 func main() {

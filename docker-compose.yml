@@ -31,7 +31,7 @@ services:
       - ELK2_INDEX=oxygen
       - ELK2_USER=
       - ELK2_PASS=
-      - ELK2_SORT_BY=started_at
+      - ELK2_SORT_BY=datetime
       - ELK2_ASC=true
 
       # - ELK8_URLS=http://172.30.43.125:9200,http://172.30.43.126:9200,http://172.30.43.127:9200
@@ -43,7 +43,7 @@ services:
       - ELK8_INDEX=oxygen
       - ELK8_USER=
       - ELK8_PASS=
-      - ELK8_SORT_BY=started_at
+      - ELK8_SORT_BY=datetime
       - ELK8_ORDER_BY=desc
 
      
