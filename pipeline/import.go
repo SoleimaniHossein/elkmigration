@@ -60,7 +60,7 @@ func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Cl
 	}
 
 	err := utils.Retry(ctx, config.App.MaxRetries, config.App.TTL, func() error {
-		return sendBulkRequest(ctx, client, config.Elk8.Index, *bulkData, config.App.MaxBulkPayloadBytes)
+		return sendBulkRequest(ctx, config, client, *bulkData, config.App.MaxBulkPayloadBytes)
 	})
 
 	if err != nil {
@@ -74,8 +74,8 @@ func handleBulkInsert(ctx context.Context, config *config.Config, client *es8.Cl
 	return false
 }
 
-func sendBulkRequest(ctx context.Context, client *es8.Client, index string, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
-	if index == "" {
+func sendBulkRequest(ctx context.Context, config *config.Config, client *es8.Client, bulkData []map[string]interface{}, maxBulkPayloadBytes int) error {
+	if config.Elk8.Index == "" {
 		return errors.New("index name is empty")
 	}
 
@@ -86,7 +86,7 @@ func sendBulkRequest(ctx context.Context, client *es8.Client, index string, bulk
 
 	for _, doc := range bulkData {
 
-		meta := map[string]interface{}{"create": map[string]interface{}{"_index": index}}
+		meta := map[string]interface{}{"create": map[string]interface{}{"_index": config.Elk8.Index}}
 		if err := encoder.Encode(meta); err != nil {
 			logger.Error("Failed to encode metadata", zap.Error(err))
 			return err
@@ -113,7 +113,7 @@ func sendBulkRequest(ctx context.Context, client *es8.Client, index string, bulk
 		}
 	}
 
-	count, err := GetDocumentCount(ctx, client)
+	count, err := GetDocumentCount(ctx, config, client)
 	if err != nil {
 		logger.Error("Error getting document count", zap.Error(err))
 		return err
@@ -213,12 +213,13 @@ type CountResponse struct {
 }
 
 // GetDocumentCount retrieves the number of documents in an Elasticsearch 8 index.
-func GetDocumentCount(ctx context.Context, es8Client *es8.Client) (int64, error) {
+func GetDocumentCount(ctx context.Context, config *config.Config, es8Client *es8.Client) (int64, error) {
 	// Prepare the request body (optional query filter)
 	body := `{"query": {"match_all": {}}}`
 
 	// Execute the count request
 	res, err := es8Client.Count(
+		es8Client.Count.WithIndex(config.Elk8.Index),
 		es8Client.Count.WithContext(ctx),
 		es8Client.Count.WithBody(strings.NewReader(body)),
 		es8Client.Count.WithPretty(),
