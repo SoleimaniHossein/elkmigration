@@ -1,0 +1,53 @@
+networks:
+  elk-net:
+
+volumes:
+  elk-backups_data: {}
+  elk-elasticsearch_data: {}
+  elk-etc-logstash_data: {}
+  es8_data: {}
+
+services:
+
+  elk8:
+    image: elasticsearch:8.15.3
+    container_name: elk8
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - elk-net
+    ports:
+      - "9208:9200"
+    volumes:
+      - es8_data:/usr/share/elasticsearch/data
+
+  logstash:
+    image: logstash:8.15.3
+    container_name: logstash
+    networks:
+      - elk-net
+    ports:
+      - "5044:5044" # Beats input
+      - "9600:9600" # Logstash monitoring API
+    volumes:
+      - ./.docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    depends_on:
+      - elk8
+
+  kibana_latest:
+    image: kibana:8.15.3
+    container_name: kibana_8.15.3
+    ports:
+      - "5608:5601"
+    environment:
+      ELASTICSEARCH_URL: "http://elk8:9200"
+    networks:
+      - elk-net

@@ -30,12 +30,13 @@ func ExportDocuments(ctx context.Context, config *config.Config, elk2client clie
 	logger.Info("Using latest datetime for migration", zap.Int64("latest_datetime", latestDateTime))
 
 	// Step 3: Construct Range Query (fetch documents from ELK 2 starting from `latestDateTime`)
-	rangeQuery := elastic.NewRangeQuery(config.Elk2.SortBy).
-		Gt(latestDateTime)
+	//rangeQuery := elastic.NewRangeQuery(config.Elk2.SortBy).Gt(latestDateTime)
+
+	matchQuery := elastic.NewMatchQuery("service.id", "6470ff87-9d1b-4b4f-aa82-ca4fdfs03d830778")
 
 	es2Client := elk2client.(*clients.Es2Client).Client
 
-	count, err := es2Client.Count(config.Elk2.Index).Query(rangeQuery).Do()
+	count, err := es2Client.Count(config.Elk2.Index).Query(matchQuery).Do()
 
 	if err != nil {
 		log.Fatalf("Error getting count: %v", err)
@@ -47,7 +48,7 @@ func ExportDocuments(ctx context.Context, config *config.Config, elk2client clie
 	var scrollService *elastic.ScrollService
 	scrollService = es2Client.Scroll(config.Elk2.Index).
 		Size(config.App.BulkSize).
-		Query(rangeQuery).
+		Query(matchQuery).
 		Sort(config.Elk2.SortBy, config.Elk2.Asc).
 		Scroll(config.App.ScrollTTL)
 
